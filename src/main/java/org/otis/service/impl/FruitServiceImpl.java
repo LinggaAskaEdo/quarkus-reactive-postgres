@@ -58,4 +58,14 @@ public class FruitServiceImpl implements FruitService {
                 .onItem().ifNull().continueWith(() -> DtoHelper.constructResponse(StatusMsgEnum.FAILED, CommonConstant.FAILED, "Data update failed !!!", null))
                 .onFailure().recoverWithItem(failure -> DtoHelper.constructResponse(StatusMsgEnum.FAILED, CommonConstant.FAILED, failure.getMessage(), null));
     }
+
+    @Override
+    public Uni<DtoResponse> deleteById(Long id) {
+        Uni<Boolean> fruit = fruitDao.deleteById(id);
+
+        return fruit
+                .onItem().transform(deleted -> deleted ? DtoHelper.constructResponse(StatusMsgEnum.SUCCESS, CommonConstant.SUCCESS, "Data deleted successfully !!!", null) :
+                        DtoHelper.constructResponse(StatusMsgEnum.FAILED, CommonConstant.FAILED, "Data delete failed !!!", null))
+                .onFailure().recoverWithItem(failure -> DtoHelper.constructResponse(StatusMsgEnum.FAILED, CommonConstant.FAILED, failure.getMessage(), null));
+    }
 }

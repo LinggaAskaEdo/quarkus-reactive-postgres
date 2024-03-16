@@ -51,4 +51,10 @@ public class FruitController {
 
         return fruitService.patch(request);
     }
+
+    @DELETE
+    @Path("{id}")
+    public Uni<DtoResponse> delete(Long id) {
+        return fruitService.deleteById(id);
+    }
 }

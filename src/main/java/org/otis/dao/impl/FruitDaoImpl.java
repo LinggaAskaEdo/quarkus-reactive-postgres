@@ -62,4 +62,12 @@ public class FruitDaoImpl implements FruitDao {
                 .onItem().ifNotNull().transform(SqlResult::rowCount)
                 .onItem().ifNotNull().transform(integer -> integer > 0 ? new Fruit(request.getId(), request.getName()) : null);
     }
+
+    @Override
+    public Uni<Boolean> deleteById(Long id) {
+        return client
+                .preparedQuery("DELETE FROM fruits where id = $1")
+                .execute(Tuple.of(id))
+                .onItem().transform(rows -> rows.rowCount() == 1);
+    }
 }

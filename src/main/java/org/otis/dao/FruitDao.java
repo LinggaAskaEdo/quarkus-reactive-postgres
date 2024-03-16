@@ -14,4 +14,6 @@ public interface FruitDao {
     Uni<String> create(String name);
 
     Uni<Fruit> patch(DtoRequest request);
+
+    Uni<Boolean> deleteById(Long id);
 }

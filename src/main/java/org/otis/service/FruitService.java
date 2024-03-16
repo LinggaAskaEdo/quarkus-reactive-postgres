@@ -12,4 +12,6 @@ public interface FruitService {
     Uni<DtoResponse> create(DtoRequest request);
 
     Uni<DtoResponse> patch(DtoRequest request);
+
+    Uni<DtoResponse> deleteById(Long id);
 }
