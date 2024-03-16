@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface FruitDao {
     Uni<List<Fruit>> findAll();
+
     Uni<Fruit> findById(Long id);
 
     Uni<String> create(String name);
