@@ -1,8 +1,9 @@
 package org.otis.service;
 
-import io.smallrye.mutiny.Uni;
 import org.otis.model.dto.DtoPagingRequest;
 import org.otis.model.dto.DtoPagingResponse;
+
+import io.smallrye.mutiny.Uni;
 
 public interface EmployeeService {
     Uni<DtoPagingResponse> getEmployees(DtoPagingRequest pagingRequest);

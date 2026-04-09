@@ -1,16 +1,17 @@
-package org.otis.model.vo;
+package org.otis.model.dto;
+
+import java.util.List;
+
+import org.otis.model.entity.Employee;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.otis.model.entity.Employee;
-
-import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class VoEmployees {
+public class DtoEmployees {
     private List<Employee> employees;
     private int count;
 }

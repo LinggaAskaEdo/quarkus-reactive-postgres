@@ -1,19 +1,21 @@
 package org.otis.dao;
 
-import io.smallrye.mutiny.Uni;
+import java.util.List;
+import java.util.UUID;
+
 import org.otis.model.dto.DtoRequest;
 import org.otis.model.entity.Fruit;
 
-import java.util.List;
+import io.smallrye.mutiny.Uni;
 
 public interface FruitDao {
     Uni<List<Fruit>> findAll();
 
-    Uni<Fruit> findById(Long id);
+    Uni<Fruit> findById(UUID id);
 
-    Uni<String> create(String name);
+    Uni<UUID> create(String name);
 
     Uni<Fruit> patch(DtoRequest request);
 
-    Uni<Boolean> deleteById(Long id);
+    Uni<Boolean> deleteById(UUID id);
 }

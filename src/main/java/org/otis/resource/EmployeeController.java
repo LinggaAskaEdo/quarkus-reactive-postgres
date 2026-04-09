@@ -1,17 +1,23 @@
 package org.otis.resource;
 
-import io.smallrye.mutiny.Uni;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
 import org.otis.model.dto.DtoPagingRequest;
 import org.otis.model.dto.DtoPagingResponse;
 import org.otis.service.EmployeeService;
 
+import io.smallrye.mutiny.Uni;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+
 @Path("employees")
 public class EmployeeController {
-    @Inject
-    EmployeeService employeeService;
+    private final EmployeeService employeeService;
+
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
+    }
 
     @POST
     @Path("/1")

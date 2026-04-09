@@ -1,0 +1,20 @@
+quarkus:
+  datasource:
+    db-kind: postgresql
+    username: postgres
+    password: ${POSTGRES_DOCKER_PASSWORD:postgres}
+    devservices:
+      enabled: false
+    reactive:
+      url: postgresql://localhost:5432/quarkus-reactive-postgres
+      max-size: 20
+      connection-timeout: 5S
+      idle-timeout: 60S
+      pool-cleaner-interval: 10S
+  log:
+    min-level: DEBUG
+  http:
+    port: 8080
+    cors:
+      ~: true
+      origins: "*"

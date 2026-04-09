@@ -1,14 +1,15 @@
 package org.otis.dao;
 
-import io.smallrye.mutiny.Uni;
+import java.util.List;
+
+import org.otis.model.dto.DtoEmployees;
 import org.otis.model.dto.DtoPagingRequest;
 import org.otis.model.entity.Employee;
-import org.otis.model.vo.VoEmployees;
 
-import java.util.List;
+import io.smallrye.mutiny.Uni;
 
 public interface EmployeeDao {
     Uni<List<Employee>> getEmployees(DtoPagingRequest pagingRequest);
 
-    Uni<VoEmployees> getAllEmployee(DtoPagingRequest pagingRequest);
+    Uni<DtoEmployees> getAllEmployee(DtoPagingRequest pagingRequest);
 }

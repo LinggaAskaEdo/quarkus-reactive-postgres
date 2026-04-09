@@ -1,73 +1,61 @@
 package org.otis.dao.impl;
 
-import io.smallrye.mutiny.Uni;
-import io.vertx.mutiny.pgclient.PgPool;
-import io.vertx.mutiny.sqlclient.RowSet;
-import io.vertx.mutiny.sqlclient.SqlResult;
-import io.vertx.mutiny.sqlclient.Tuple;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import java.util.List;
+import java.util.UUID;
+
 import org.otis.dao.FruitDao;
 import org.otis.model.dto.DtoRequest;
 import org.otis.model.entity.Fruit;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
+import com.github.f4b6a3.uuid.UuidCreator;
+
+import io.smallrye.mutiny.Uni;
+import io.vertx.mutiny.sqlclient.Pool;
+import io.vertx.mutiny.sqlclient.RowSet;
+import io.vertx.mutiny.sqlclient.SqlResult;
+import io.vertx.mutiny.sqlclient.Tuple;
+import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class FruitDaoImpl implements FruitDao {
-    @Inject
-    PgPool client;
+	private final Pool client;
 
-    @Override
-    public Uni<List<Fruit>> findAll() {
-        List<Fruit> fruits = new ArrayList<>();
+	public FruitDaoImpl(Pool client) {
+		this.client = client;
+	}
 
-        return client
-                .query("SELECT id, name FROM fruits ORDER BY name ASC")
-                .execute()
-                .map(rows -> {
-                    if (rows.size() > 0) {
-                        rows.forEach(row -> fruits.add(new Fruit(row.getLong(0), row.getString(1))));
-                    }
+	@Override
+	public Uni<List<Fruit>> findAll() {
+		return client.query("SELECT id, name FROM fruits ORDER BY name ASC").execute()
+				.map(rows -> rows.stream().map(row -> new Fruit(row.getUUID("id"), row.getString("name"))).toList());
+	}
 
-                    return fruits;
-                });
-    }
+	@Override
+	public Uni<Fruit> findById(UUID id) {
+		return client.preparedQuery("SELECT id, name FROM fruits WHERE id = $1").execute(Tuple.of(id)).onItem()
+				.ifNotNull().transform(RowSet::iterator).onItem().ifNotNull()
+				.transform(iterator -> iterator.hasNext() ? Fruit.from(iterator.next()) : null);
+	}
 
-    @Override
-    public Uni<Fruit> findById(Long id) {
-        return client
-                .preparedQuery("SELECT id, name FROM fruits WHERE id = $1")
-                .execute(Tuple.of(id))
-                .onItem().ifNotNull().transform(RowSet::iterator)
-                .onItem().ifNotNull().transform(iterator -> iterator.hasNext() ? Fruit.from(iterator.next()) : null);
-    }
+	@Override
+	public Uni<UUID> create(String name) {
+		UUID uuid = UuidCreator.getTimeOrderedEpoch();
+		return client.preparedQuery("INSERT INTO fruits (id, name) VALUES ($1, $2) RETURNING id")
+				.execute(Tuple.of(uuid, name)).onItem().ifNotNull()
+				.transform(rows -> rows.iterator().next().getUUID("id"));
+	}
 
-    @Override
-    public Uni<String> create(String name) {
-        return client
-                .preparedQuery("INSERT INTO fruits (name) VALUES ($1) RETURNING id")
-                .execute(Tuple.of(name))
-                .onItem().ifNotNull().transform(rows -> rows.iterator().next().getLong("id"))
-                .onItem().ifNotNull().transform(longID -> URI.create("/fruits/" + longID).toString());
-    }
+	@Override
+	public Uni<Fruit> patch(DtoRequest request) {
+		return client.preparedQuery("UPDATE fruits SET name = $1 WHERE id = $2")
+				.execute(Tuple.of(request.getName(), request.getId())).onItem().ifNotNull()
+				.transform(SqlResult::rowCount).onItem().ifNotNull()
+				.transform(integer -> integer > 0 ? new Fruit(request.getId(), request.getName()) : null);
+	}
 
-    @Override
-    public Uni<Fruit> patch(DtoRequest request) {
-        return client
-                .preparedQuery("UPDATE fruits SET name = $1 WHERE id = $2")
-                .execute(Tuple.of(request.getName(), request.getId()))
-                .onItem().ifNotNull().transform(SqlResult::rowCount)
-                .onItem().ifNotNull().transform(integer -> integer > 0 ? new Fruit(request.getId(), request.getName()) : null);
-    }
-
-    @Override
-    public Uni<Boolean> deleteById(Long id) {
-        return client
-                .preparedQuery("DELETE FROM fruits where id = $1")
-                .execute(Tuple.of(id))
-                .onItem().transform(rows -> rows.rowCount() == 1);
-    }
+	@Override
+	public Uni<Boolean> deleteById(UUID id) {
+		return client.preparedQuery("DELETE FROM fruits where id = $1").execute(Tuple.of(id)).onItem()
+				.transform(rows -> rows.rowCount() >= 1);
+	}
 }

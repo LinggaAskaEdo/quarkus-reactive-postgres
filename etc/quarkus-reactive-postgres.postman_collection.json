@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "quarkus-reactive-postgres",
+    "description": "API collection for Quarkus Reactive PostgreSQL application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Fruits",
+      "item": [
+        {
+          "name": "Get All Fruits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fruits",
+              "host": ["{{base_url}}"],
+              "path": ["fruits"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Fruit By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fruits/:id",
+              "host": ["{{base_url}}"],
+              "path": ["fruits", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000",
+                  "description": "Fruit UUID"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Fruit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Apple\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/fruits",
+              "host": ["{{base_url}}"],
+              "path": ["fruits"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch Fruit",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"name\": \"Green Apple\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/fruits",
+              "host": ["{{base_url}}"],
+              "path": ["fruits"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Fruit",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fruits/:id",
+              "host": ["{{base_url}}"],
+              "path": ["fruits", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000",
+                  "description": "Fruit UUID"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Get Employees (Method 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offset\": 0,\n  \"limit\": 10,\n  \"search\": {\n    \"name\": \"John\"\n  },\n  \"order\": \"lastName\",\n  \"sort\": \"ASC\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/employees/1",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "1"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Employees (Method 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offset\": 0,\n  \"limit\": 10,\n  \"search\": {\n    \"name\": \"Jane\"\n  },\n  \"order\": \"firstName\",\n  \"sort\": \"DESC\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/employees/2",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "2"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

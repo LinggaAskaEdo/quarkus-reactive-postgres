@@ -39,5 +39,8 @@ nb-configuration.xml
 # Local environment
 .env
 
+# Qwen
+.qwen/
+
 # Plugin directory
 /.quarkus/cli/plugins/

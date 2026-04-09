@@ -1,17 +1,20 @@
 package org.otis.service;
 
-import io.smallrye.mutiny.Uni;
+import java.util.UUID;
+
 import org.otis.model.dto.DtoRequest;
 import org.otis.model.dto.DtoResponse;
+
+import io.smallrye.mutiny.Uni;
 
 public interface FruitService {
     Uni<DtoResponse> findAll();
 
-    Uni<DtoResponse> findById(Long id);
+    Uni<DtoResponse> findById(UUID id);
 
     Uni<DtoResponse> create(DtoRequest request);
 
     Uni<DtoResponse> patch(DtoRequest request);
 
-    Uni<DtoResponse> deleteById(Long id);
+    Uni<DtoResponse> deleteById(UUID id);
 }

@@ -5,62 +5,89 @@ import org.otis.constant.StatusMsgEnum;
 import org.otis.model.dto.DtoPagingResponse;
 import org.otis.model.dto.DtoResponse;
 
-import java.util.Objects;
-
 public class DtoHelper {
+    private DtoHelper() {
+        // Utility class - prevent instantiation
+    }
+
     public static DtoResponse constructResponse(StatusMsgEnum sme, String msg, String reason, Object data) {
-        DtoResponse dtoRespond = null;
+        DtoResponse dtoRespond;
 
-        if (null != sme) {
-            switch (sme) {
-                case FAILED:
-                    dtoRespond = new DtoResponse();
-                    dtoRespond.setStatus(CommonConstant._0);
-                    dtoRespond.setMessage(msg);
-                    dtoRespond.setReason(reason);
-                    break;
-                case SUCCESS:
-                    dtoRespond = new DtoResponse();
-                    dtoRespond.setStatus(CommonConstant._1);
-                    dtoRespond.setMessage(msg);
-                    dtoRespond.setReason(reason);
-                    break;
-                default:
-                    return null;
-            }
+        if (sme == null) {
+            dtoRespond = createFailedResponse("Invalid status", "Status message enum is null", null);
+        } else {
+            dtoRespond = switch (sme) {
+            case FAILED -> createFailedResponse(msg, reason, data);
+            case SUCCESS -> createSuccessResponse(msg, reason, data);
+            default -> createFailedResponse("Unknown status: " + sme, "Unsupported status", data);
+            };
         }
-
-        Objects.requireNonNull(dtoRespond).setData(data);
 
         return dtoRespond;
     }
 
-    public static DtoPagingResponse constructPagingResponse(StatusMsgEnum sme, String msg, String reason, Object data, int totalFiltered, int totalData) {
-        DtoPagingResponse dtoPagingResponse = null;
+    private static DtoResponse createFailedResponse(String msg, String reason, Object data) {
+        DtoResponse resp = new DtoResponse();
+        resp.setStatus(CommonConstant.ZERO);
+        resp.setMessage(msg);
+        resp.setReason(reason);
+        resp.setData(data);
 
-        if (null != sme) {
-            switch (sme) {
-                case FAILED:
-                    dtoPagingResponse = new DtoPagingResponse();
-                    dtoPagingResponse.setStatus(CommonConstant._0);
-                    dtoPagingResponse.setMessage(msg);
-                    dtoPagingResponse.setReason(reason);
-                    break;
-                case SUCCESS:
-                    dtoPagingResponse = new DtoPagingResponse();
-                    dtoPagingResponse.setStatus(CommonConstant._1);
-                    dtoPagingResponse.setMessage(msg);
-                    dtoPagingResponse.setReason(reason);
-                    break;
-                default:
-                    return null;
-            }
+        return resp;
+    }
+
+    private static DtoResponse createSuccessResponse(String msg, String reason, Object data) {
+        DtoResponse resp = new DtoResponse();
+        resp.setStatus(CommonConstant.ONE);
+        resp.setMessage(msg);
+        resp.setReason(reason);
+        resp.setData(data);
+
+        return resp;
+    }
+
+    public static DtoPagingResponse constructPagingResponse(StatusMsgEnum sme, String msg, String reason, Object data,
+            int totalFiltered, int totalData) {
+        DtoPagingResponse dtoPagingResponse;
+
+        if (sme == null) {
+            dtoPagingResponse = createFailedPagingResponse("Invalid status", "Status message enum is null", data,
+                    totalFiltered, totalData);
+        } else {
+            dtoPagingResponse = switch (sme) {
+            case FAILED -> createFailedPagingResponse(msg, reason, data, totalFiltered, totalData);
+            case SUCCESS -> createSuccessPagingResponse(msg, reason, data, totalFiltered, totalData);
+            default -> createFailedPagingResponse("Unknown status: " + sme, "Unsupported status", data, totalFiltered,
+                    totalData);
+            };
         }
 
-        Objects.requireNonNull(dtoPagingResponse).setData(data);
-        dtoPagingResponse.setRecordsFiltered(totalFiltered);
-        dtoPagingResponse.setRecordsTotal(totalData);
-
         return dtoPagingResponse;
+    }
+
+    private static DtoPagingResponse createFailedPagingResponse(String msg, String reason, Object data,
+            int totalFiltered, int totalData) {
+        DtoPagingResponse resp = new DtoPagingResponse();
+        resp.setStatus(CommonConstant.ZERO);
+        resp.setMessage(msg);
+        resp.setReason(reason);
+        resp.setData(data);
+        resp.setRecordsFiltered(totalFiltered);
+        resp.setRecordsTotal(totalData);
+
+        return resp;
+    }
+
+    private static DtoPagingResponse createSuccessPagingResponse(String msg, String reason, Object data,
+            int totalFiltered, int totalData) {
+        DtoPagingResponse resp = new DtoPagingResponse();
+        resp.setStatus(CommonConstant.ONE);
+        resp.setMessage(msg);
+        resp.setReason(reason);
+        resp.setData(data);
+        resp.setRecordsFiltered(totalFiltered);
+        resp.setRecordsTotal(totalData);
+
+        return resp;
     }
 }
