@@ -1,8 +1,9 @@
 package org.otis.resource;
 
-import org.otis.model.dto.DtoPagingRequest;
-import org.otis.model.dto.DtoPagingResponse;
-import org.otis.service.EmployeeService;
+import org.otis.employee.usecase.GetAllEmployees;
+import org.otis.employee.usecase.GetEmployees;
+import org.otis.shared.dto.DtoPagingRequest;
+import org.otis.shared.dto.DtoPagingResponse;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.Consumes;
@@ -13,10 +14,12 @@ import jakarta.ws.rs.core.MediaType;
 
 @Path("employees")
 public class EmployeeController {
-    private final EmployeeService employeeService;
+    private final GetEmployees getEmployees;
+    private final GetAllEmployees getAllEmployees;
 
-    public EmployeeController(EmployeeService employeeService) {
-        this.employeeService = employeeService;
+    public EmployeeController(GetEmployees getEmployees, GetAllEmployees getAllEmployees) {
+        this.getEmployees = getEmployees;
+        this.getAllEmployees = getAllEmployees;
     }
 
     @POST
@@ -24,7 +27,7 @@ public class EmployeeController {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<DtoPagingResponse> getEmployees(DtoPagingRequest pagingRequest) {
-        return employeeService.getEmployees(pagingRequest);
+        return getEmployees.execute(pagingRequest);
     }
 
     @POST
@@ -32,6 +35,6 @@ public class EmployeeController {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<DtoPagingResponse> getAllEmployee(DtoPagingRequest pagingRequest) {
-        return employeeService.getAllEmployee(pagingRequest);
+        return getAllEmployees.execute(pagingRequest);
     }
 }

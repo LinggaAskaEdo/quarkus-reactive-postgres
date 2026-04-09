@@ -2,11 +2,15 @@ package org.otis.resource;
 
 import java.util.UUID;
 
-import org.otis.model.dto.DtoRequest;
-import org.otis.model.dto.DtoResponse;
-import org.otis.model.dto.FruitCreate;
-import org.otis.model.dto.FruitPatch;
-import org.otis.service.FruitService;
+import org.otis.fruit.usecase.CreateFruit;
+import org.otis.fruit.usecase.DeleteFruit;
+import org.otis.fruit.usecase.FindAllFruits;
+import org.otis.fruit.usecase.FindFruitById;
+import org.otis.fruit.usecase.UpdateFruit;
+import org.otis.shared.dto.DtoRequest;
+import org.otis.shared.dto.DtoResponse;
+import org.otis.shared.dto.FruitCreate;
+import org.otis.shared.dto.FruitPatch;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.validation.Valid;
@@ -22,42 +26,51 @@ import jakarta.ws.rs.core.MediaType;
 
 @Path("fruits")
 public class FruitController {
-    private final FruitService fruitService;
+	private final FindAllFruits findAllFruits;
+	private final FindFruitById findFruitById;
+	private final CreateFruit createFruit;
+	private final UpdateFruit updateFruit;
+	private final DeleteFruit deleteFruit;
 
-    public FruitController(FruitService fruitService) {
-        this.fruitService = fruitService;
-    }
+	public FruitController(FindAllFruits findAllFruits, FindFruitById findFruitById, CreateFruit createFruit,
+			UpdateFruit updateFruit, DeleteFruit deleteFruit) {
+		this.findAllFruits = findAllFruits;
+		this.findFruitById = findFruitById;
+		this.createFruit = createFruit;
+		this.updateFruit = updateFruit;
+		this.deleteFruit = deleteFruit;
+	}
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Uni<DtoResponse> get() {
-        return fruitService.findAll();
-    }
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	public Uni<DtoResponse> getAll() {
+		return findAllFruits.execute();
+	}
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("{id}")
-    public Uni<DtoResponse> getSingle(UUID id) {
-        return fruitService.findById(id);
-    }
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("{id}")
+	public Uni<DtoResponse> getSingle(UUID id) {
+		return findFruitById.execute(id);
+	}
 
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Uni<DtoResponse> create(@Valid @ConvertGroup(to = FruitCreate.class) DtoRequest request) {
-        return fruitService.create(request);
-    }
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Uni<DtoResponse> create(@Valid @ConvertGroup(to = FruitCreate.class) DtoRequest request) {
+		return createFruit.execute(request.getName());
+	}
 
-    @PATCH
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Uni<DtoResponse> patch(@Valid @ConvertGroup(to = FruitPatch.class) DtoRequest request) {
-        return fruitService.patch(request);
-    }
+	@PATCH
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Uni<DtoResponse> patch(@Valid @ConvertGroup(to = FruitPatch.class) DtoRequest request) {
+		return updateFruit.execute(request.getId(), request.getName());
+	}
 
-    @DELETE
-    @Path("{id}")
-    public Uni<DtoResponse> delete(UUID id) {
-        return fruitService.deleteById(id);
-    }
+	@DELETE
+	@Path("{id}")
+	public Uni<DtoResponse> delete(UUID id) {
+		return deleteFruit.execute(id);
+	}
 }

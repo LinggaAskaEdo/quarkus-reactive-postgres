@@ -104,6 +104,38 @@ make flyway-clean    # Drop all tables (use with caution!)
 
 Import the Postman collection from `etc/quarkus-reactive-postgres.postman_collection.json` for ready-made requests.
 
+## Project Structure
+
+This project follows a domain-driven design layout with clean architecture principles:
+
+```text
+src/main/java/org/otis/
+├── shared/                      # Cross-cutting concerns
+│   ├── constant/                # Constants and enums
+│   ├── dto/                     # Shared DTOs (requests, responses, paging)
+│   └── util/                    # Helper utilities
+│
+├── fruit/                       # Fruit bounded context
+│   ├── domain/                  # Entity and repository interface
+│   ├── infrastructure/          # Repository implementation (database access)
+│   └── usecase/                 # Single-responsibility use case classes
+│
+├── employee/                    # Employee bounded context
+│   ├── domain/
+│   ├── infrastructure/
+│   └── usecase/
+│
+└── resource/                    # REST controllers (entry points)
+```
+
+### Architecture Principles
+
+- **Domain-driven design** — each business concept lives in its own bounded context
+- **Repository pattern** — domain interfaces abstracted from infrastructure
+- **Use case classes** — single-responsibility, testable business logic
+- **Constructor injection** — explicit dependencies, no field injection
+- **Lombok** — reduces boilerplate with `@Data`, `@Getter`, `@Setter`
+
 ## Related Guides
 
 - RESTEasy Reactive ([guide](https://quarkus.io/guides/resteasy-reactive)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
