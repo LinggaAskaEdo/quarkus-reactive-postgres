@@ -62,14 +62,16 @@ public class FruitSchedulerService {
 						count -> {
 							RequestContext.setReqId(reqId);
 							long processTime = System.currentTimeMillis() - startTime;
-							LOGGER.info("Successfully inserted {} fruits in this run. Total inserted: {} processTimeMs={}",
+							LOGGER.info(
+									"Successfully inserted {} fruits in this run. Total inserted: {} processTimeMs={}",
 									count, insertedCount.get(), processTime);
 							RequestContext.clear();
 						},
 						failure -> {
 							RequestContext.setReqId(reqId);
 							long processTime = System.currentTimeMillis() - startTime;
-							LOGGER.error("Failed to insert fruits: {} processTimeMs={}", failure.getMessage(), processTime);
+							LOGGER.error("Failed to insert fruits: {} processTimeMs={}", failure.getMessage(),
+									processTime);
 							RequestContext.clear();
 						});
 		RequestContext.clear();

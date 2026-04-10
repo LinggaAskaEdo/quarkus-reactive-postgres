@@ -1,0 +1,17 @@
+@NAME(FindAll)
+  SELECT id, name FROM fruits ORDER BY name ASC
+
+@NAME(FindById)
+  SELECT id, name FROM fruits WHERE id = :id
+
+@NAME(Create)
+  INSERT INTO fruits (id, name) VALUES (:id, :name) RETURNING id
+
+@NAME(CreateBulkBase)
+  INSERT INTO fruits (id, name) VALUES %s ON CONFLICT (name) DO NOTHING
+
+@NAME(Update)
+  UPDATE fruits SET name = :name WHERE id = :id
+
+@NAME(DeleteById)
+  DELETE FROM fruits WHERE id = :id

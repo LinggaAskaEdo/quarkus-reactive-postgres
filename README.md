@@ -150,6 +150,51 @@ All logs are output in JSON format with the following structure:
 
 The `req_id` is propagated across async thread boundaries so all log lines for a single operation share the same ID.
 
+## Externalized SQL (ELSql)
+
+SQL queries are externalized to `.elsql` files under `src/main/resources/sql/` using the [ELSql](https://github.com/OpenGamma/ElSql) library. This keeps SQL out of Java code for easier maintenance and review.
+
+### Structure
+
+```text
+src/main/resources/sql/
+├── fruits.elsql       # All Fruit repository queries
+└── employees.elsql    # All Employee repository queries
+```
+
+### ELSql Syntax
+
+```text
+@NAME(FindById)
+  SELECT id, name FROM fruits WHERE id = :id
+
+@NAME(Create)
+  INSERT INTO fruits (id, name) VALUES (:id, :name) RETURNING id
+```
+
+### Usage in Java
+
+```java
+// Simple named parameter query
+String sql = sqlManager.getSql("FindById", Map.of("id", someId));
+client.preparedQuery(sql).execute(Tuple.of(someId));
+
+// Query without parameters
+String sql = sqlManager.getSql("FindAll");
+client.query(sql).execute();
+```
+
+### Dynamic SQL
+
+For queries requiring dynamic structure (ORDER BY columns, LIMIT/OFFSET), SQL templates use `%s`/`%d` placeholders filled safely in Java with validated values:
+
+```java
+String sql = sqlManager.getSql("FindAllPaged")
+    .formatted(safeColumn, safeDirection, limit, offset);
+```
+
+Only whitelisted column names and sort directions are allowed to prevent SQL injection.
+
 ## Project Structure
 
 This project follows a domain-driven design layout with clean architecture principles:
@@ -159,7 +204,7 @@ src/main/java/org/otis/
 ├── shared/                      # Cross-cutting concerns
 │   ├── constant/                # Constants and enums
 │   ├── dto/                     # Shared DTOs (requests, responses, paging)
-│   └── util/                    # Helper utilities (LoggingFilter, RequestContext)
+│   └── util/                    # Helper utilities (LoggingFilter, RequestContext, SqlManager)
 │
 ├── fruit/                       # Fruit bounded context
 │   ├── domain/                  # Entity and repository interface
@@ -172,6 +217,12 @@ src/main/java/org/otis/
 │   └── usecase/
 │
 └── resource/                    # REST controllers (entry points)
+
+src/main/resources/
+├── sql/                         # Externalized SQL queries (ELSql)
+│   ├── fruits.elsql             # Fruit repository queries
+│   └── employees.elsql          # Employee repository queries
+└── db/migration/                # Flyway migration scripts
 ```
 
 ### Architecture Principles
@@ -180,7 +231,7 @@ src/main/java/org/otis/
 - **Repository pattern** — domain interfaces abstracted from infrastructure
 - **Use case classes** — single-responsibility, testable business logic
 - **Constructor injection** — explicit dependencies, no field injection
-- **Lombok** — reduces boilerplate with `@Data`, `@Getter`, `@Setter`
+- **Externalized SQL** — SQL queries in `.elsql` files via ELSql library
 - **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
 - **Context propagation** — `req_id` propagated across async thread boundaries
 

@@ -7,6 +7,7 @@ import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;
 import org.otis.shared.dto.DtoEmployees;
 import org.otis.shared.dto.DtoPagingRequest;
+import org.otis.shared.util.SqlManager;
 
 import io.quarkus.runtime.util.StringUtil;
 import io.smallrye.mutiny.Uni;
@@ -16,6 +17,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class EmployeeRepositoryImpl implements EmployeeRepository {
 	private final Pool client;
+	private final SqlManager sqlManager;
 
 	private static final Set<String> ALLOWED_SORT_DIRECTIONS = Set.of("ASC", "DESC");
 	private static final int DEFAULT_LIMIT = 10;
@@ -23,6 +25,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 
 	public EmployeeRepositoryImpl(Pool client) {
 		this.client = client;
+		this.sqlManager = new SqlManager("sql/employees.elsql");
 	}
 
 	@Override
@@ -32,12 +35,8 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 		int limit = pagingRequest.getLimit() > 0 ? pagingRequest.getLimit() : DEFAULT_LIMIT;
 		int offset = pagingRequest.getOffset() >= 0 ? pagingRequest.getOffset() : DEFAULT_OFFSET;
 
-		String sql = """
-				SELECT a.employee_id, a.first_name, a.last_name, a.email, a.phone, a.job_title
-				FROM employees a
-				ORDER BY a.%s %s
-				LIMIT %d OFFSET %d
-				""".formatted(orderColumn, sortDirection, limit, offset);
+		String sql = sqlManager.getSql("FindAllPaged").formatted(
+				orderColumn, sortDirection, limit, offset);
 
 		return client.query(sql).execute().map(rows -> rows.stream().map(row -> new Employee(row.getUUID(0),
 				row.getString(1), row.getString(2), row.getString(3), row.getString(4), row.getString(5))).toList());
@@ -50,14 +49,9 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 		int limit = pagingRequest.getLimit() > 0 ? pagingRequest.getLimit() : DEFAULT_LIMIT;
 		int offset = pagingRequest.getOffset() >= 0 ? pagingRequest.getOffset() : DEFAULT_OFFSET;
 
-		String sql = """
-				SELECT employee_id, first_name, last_name, email, phone, job_title
-				FROM employees
-				ORDER BY %s %s
-				LIMIT %d OFFSET %d
-				""".formatted(orderColumn, sortDirection, limit, offset);
-
-		String sqlCount = "SELECT count(*) FROM employees";
+		String sql = sqlManager.getSql("FindAllPaged").formatted(
+				orderColumn, sortDirection, limit, offset);
+		String sqlCount = sqlManager.getSql("CountAll");
 
 		Uni<List<Employee>> listUni = client.query(sql).execute()
 				.map(rows -> rows.stream().map(row -> new Employee(row.getUUID(0), row.getString(1), row.getString(2),

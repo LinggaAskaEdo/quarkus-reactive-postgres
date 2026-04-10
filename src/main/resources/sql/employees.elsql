@@ -1,0 +1,7 @@
+@NAME(FindAllPaged)
+  SELECT employee_id, first_name, last_name, email, phone, job_title
+  FROM employees
+  ORDER BY
+
+@NAME(CountAll)
+  SELECT count(*) FROM employees
