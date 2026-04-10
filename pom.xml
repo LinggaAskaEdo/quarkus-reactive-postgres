@@ -17,6 +17,7 @@
 		<surefire-plugin.version>3.4.0</surefire-plugin.version>
 		<lombok.version>1.18.40</lombok.version>
 		<uuid-creator.version>6.0.0</uuid-creator.version>
+		<postgresql.version>42.7.10</postgresql.version>
 		<formatter-maven-plugin.version>2.24.1</formatter-maven-plugin.version>
 		<checkstyle-maven-plugin.version>3.4.0</checkstyle-maven-plugin.version>
 		<flyway.version>12.3.0</flyway.version>
@@ -39,7 +40,27 @@
 		</dependency>
 		<dependency>
 			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-logging-json</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-scheduler</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-smallrye-context-propagation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
 			<artifactId>quarkus-reactive-pg-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-rest-client-jackson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.quarkus</groupId>
+			<artifactId>quarkus-vertx</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>io.quarkus</groupId>
@@ -154,7 +175,7 @@
 					<dependency>
 						<groupId>org.postgresql</groupId>
 						<artifactId>postgresql</artifactId>
-						<version>42.7.10</version>
+						<version>${postgresql.version}</version>
 					</dependency>
 					<dependency>
 						<groupId>org.flywaydb</groupId>

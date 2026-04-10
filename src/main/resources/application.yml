@@ -1,20 +1,31 @@
+# Quarkus configuration
 quarkus:
-  datasource:
-    db-kind: postgresql
-    username: postgres
-    password: ${POSTGRES_DOCKER_PASSWORD:postgres}
-    devservices:
-      enabled: false
-    reactive:
-      url: postgresql://localhost:5432/quarkus-reactive-postgres
-      max-size: 20
-      connection-timeout: 5S
-      idle-timeout: 60S
-      pool-cleaner-interval: 10S
-  log:
-    min-level: DEBUG
-  http:
-    port: 8080
-    cors:
-      ~: true
-      origins: "*"
+  datasource: # Database datasource configuration
+    db-kind: postgresql # Database type
+    username: postgres # Database username
+    password: ${POSTGRES_DOCKER_PASSWORD:postgres} # Database password (override with POSTGRES_DOCKER_PASSWORD env var)
+    devservices: # Development services configuration
+      enabled: false # Disable automatic database provisioning in dev mode
+    reactive: # Reactive PostgreSQL client configuration
+      url: postgresql://localhost:5432/quarkus-reactive-postgres # Database connection URL
+      max-size: 20 # Maximum number of database connections
+      connection-timeout: 5S # Maximum time to wait for a connection from the pool
+      idle-timeout: 60S # Time before an idle connection is closed
+      pool-cleaner-interval: 10S # Interval for the pool cleaner to run
+  log: # Logging configuration
+    min-level: DEBUG # Minimum log level
+    console: # Console logging configuration
+      json: true # Enable JSON logging to console (MDC fields auto-included)
+  context-propagation: # Context propagation for async operations
+    propagated-types: # MDC keys to propagate across threads
+      - org.jboss.logmanager.MDC
+  http: # HTTP server configuration
+    port: 8080 # Server port
+
+# Fruit scheduler configuration
+fruit:
+  scheduler: # Scheduler configuration
+    interval: 1m # Scheduler interval expression (e.g., 1m, 5m, 1h)
+    min-insert: 10 # Minimum number of fruits to insert per run (minimum value is 3)
+    enabled: true # Enable or disable the scheduler
+    api-url: https://www.fruityvice.com/api/fruit/all # URL of the fruit API endpoint

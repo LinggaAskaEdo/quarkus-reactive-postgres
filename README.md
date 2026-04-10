@@ -104,6 +104,52 @@ make flyway-clean    # Drop all tables (use with caution!)
 
 Import the Postman collection from `etc/quarkus-reactive-postgres.postman_collection.json` for ready-made requests.
 
+## Fruit Scheduler
+
+A background job that periodically fetches random fruit names from the [FruityVice API](https://www.fruityvice.com/) and inserts them into the database.
+
+### Configuration
+
+```yaml
+fruit:
+  scheduler:
+    interval: 1m # Scheduler interval (e.g., 1m, 5m, 1h)
+    min-insert: 10 # Minimum fruits to insert per run (minimum: 3)
+    enabled: true # Enable/disable the scheduler
+    api-url: https://www.fruityvice.com/api/fruit/all # API endpoint
+```
+
+### Behavior
+
+- Fetches all fruits from the 3rd party API and shuffles them randomly
+- Inserts a configurable minimum number of fruits per run
+- Uses bulk insert with `ON CONFLICT DO NOTHING` to skip duplicates
+- Each run logs a unique `req_id` (UUID v7, 8 chars) and `processTimeMs`
+
+## Logging
+
+All logs are output in JSON format with the following structure:
+
+```json
+{
+  "timestamp": "2026-04-10T09:44:45.068+07:00",
+  "level": "INFO",
+  "message": "event=END httpMethod=GET requestPath=/fruits statusCode=200 processTimeMs=45",
+  "threadName": "vert.x-eventloop-thread-2",
+  "mdc": { "req_id": "019d7547" },
+  "loggerName": "org.otis.shared.util.LoggingFilter"
+}
+```
+
+### Fields
+
+| Field           | Description                                                             |
+| --------------- | ----------------------------------------------------------------------- |
+| `req_id`        | Request ID (UUID v7, 8 chars) — unique per API request or scheduler run |
+| `processTimeMs` | Duration of the request/scheduler run in milliseconds                   |
+
+The `req_id` is propagated across async thread boundaries so all log lines for a single operation share the same ID.
+
 ## Project Structure
 
 This project follows a domain-driven design layout with clean architecture principles:
@@ -113,11 +159,11 @@ src/main/java/org/otis/
 ├── shared/                      # Cross-cutting concerns
 │   ├── constant/                # Constants and enums
 │   ├── dto/                     # Shared DTOs (requests, responses, paging)
-│   └── util/                    # Helper utilities
+│   └── util/                    # Helper utilities (LoggingFilter, RequestContext)
 │
 ├── fruit/                       # Fruit bounded context
 │   ├── domain/                  # Entity and repository interface
-│   ├── infrastructure/          # Repository implementation (database access)
+│   ├── infrastructure/          # Repository implementation + scheduler service
 │   └── usecase/                 # Single-responsibility use case classes
 │
 ├── employee/                    # Employee bounded context
@@ -135,6 +181,8 @@ src/main/java/org/otis/
 - **Use case classes** — single-responsibility, testable business logic
 - **Constructor injection** — explicit dependencies, no field injection
 - **Lombok** — reduces boilerplate with `@Data`, `@Getter`, `@Setter`
+- **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
+- **Context propagation** — `req_id` propagated across async thread boundaries
 
 ## Related Guides
 

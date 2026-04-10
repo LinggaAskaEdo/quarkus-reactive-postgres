@@ -6,13 +6,15 @@ import java.util.UUID;
 import io.smallrye.mutiny.Uni;
 
 public interface FruitRepository {
-    Uni<List<Fruit>> findAll();
+	Uni<List<Fruit>> findAll();
 
-    Uni<Fruit> findById(UUID id);
+	Uni<Fruit> findById(UUID id);
 
-    Uni<UUID> create(String name);
+	Uni<UUID> create(String name);
 
-    Uni<Fruit> update(UUID id, String name);
+	Uni<Integer> createBulk(List<String> names);
 
-    Uni<Boolean> deleteById(UUID id);
+	Uni<Fruit> update(UUID id, String name);
+
+	Uni<Boolean> deleteById(UUID id);
 }

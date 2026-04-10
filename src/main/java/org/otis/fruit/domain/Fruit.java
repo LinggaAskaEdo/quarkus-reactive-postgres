@@ -11,10 +11,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Fruit {
-    private UUID id;
-    private String name;
+	private UUID id;
+	private String name;
 
-    public static Fruit from(Row row) {
-        return new Fruit(row.getUUID("id"), row.getString("name"));
-    }
+	public static Fruit from(Row row) {
+		return new Fruit(row.getUUID("id"), row.getString("name"));
+	}
 }

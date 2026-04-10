@@ -14,6 +14,8 @@ public class LoggingFilter implements ContainerRequestFilter, ContainerResponseF
 
     @Override
     public void filter(ContainerRequestContext requestContext) {
+        RequestContext.setReqId(RequestContext.generateReqId());
+        requestContext.setProperty("startTime", System.currentTimeMillis());
         LOGGER.info(() -> String.format("event=START httpMethod=%s requestPath=%s remoteHost=%s requestParam=%s",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getRequestUri().getPath(),
@@ -23,9 +25,13 @@ public class LoggingFilter implements ContainerRequestFilter, ContainerResponseF
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-        LOGGER.info(() -> String.format("event=END httpMethod=%s requestPath=%s statusCode=%s",
+        Long startTime = (Long) requestContext.getProperty("startTime");
+        long processTime = startTime != null ? System.currentTimeMillis() - startTime : -1;
+        LOGGER.info(() -> String.format("event=END httpMethod=%s requestPath=%s statusCode=%s processTimeMs=%d",
                 requestContext.getMethod(),
                 requestContext.getUriInfo().getRequestUri().getPath(),
-                responseContext.getStatus()));
+                responseContext.getStatus(),
+                processTime));
+        RequestContext.clear();
     }
 }
