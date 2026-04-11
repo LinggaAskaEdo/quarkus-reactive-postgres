@@ -22,6 +22,7 @@ quarkus:
   http: # HTTP server configuration
     port: 8181 # Server port
     auth:
+      proactive: false # Let JAX-RS handle auth exceptions (enables JSON error responses)
       permission:
         # Allow health, dev, and auth paths without auth
         /q/*: permit
@@ -36,6 +37,8 @@ quarkus:
     credentials:
       secret: ${KEYCLOAK_CLIENT_SECRET:secret} # OAuth2 client secret
     application-type: service # Service-to-service app (validates JWT tokens)
+    token:
+      audience: account # Accept tokens with 'account' audience (Keycloak password grant default)
     token-state-manager:
       encryption-required: false # Disable encryption for dev mode
 

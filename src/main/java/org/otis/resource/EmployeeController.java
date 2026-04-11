@@ -5,8 +5,8 @@ import org.otis.employee.usecase.GetEmployees;
 import org.otis.shared.dto.DtoPagingRequest;
 import org.otis.shared.dto.DtoPagingResponse;
 
+import io.quarkus.security.Authenticated;
 import io.smallrye.mutiny.Uni;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -14,7 +14,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 @Path("employees")
-@RolesAllowed("**")
+@Authenticated
 public class EmployeeController {
 	private final GetEmployees getEmployees;
 	private final GetAllEmployees getAllEmployees;

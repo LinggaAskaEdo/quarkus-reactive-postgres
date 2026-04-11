@@ -1,5 +1,6 @@
 package org.otis.fruit.infrastructure;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +28,24 @@ public class FruitRepositoryImpl implements FruitRepository {
 		this.sqlManager = new SqlManager("sql/fruits.elsql");
 	}
 
+	private record QueryWithParams(String sql, Tuple tuple) {
+	}
+
+	/**
+	 * Build query with positional params from a LinkedHashMap of named params.
+	 */
+	private QueryWithParams buildQuery(String sqlTemplate, LinkedHashMap<String, Object> params) {
+		String sql = sqlTemplate;
+		Tuple tuple = Tuple.tuple();
+		int index = 1;
+		for (Map.Entry<String, Object> entry : params.entrySet()) {
+			sql = sql.replace(":" + entry.getKey(), "$" + index);
+			tuple.addValue(entry.getValue());
+			index++;
+		}
+		return new QueryWithParams(sql, tuple);
+	}
+
 	@Override
 	public Uni<List<Fruit>> findAll() {
 		return client.query(sqlManager.getSql("FindAll")).execute()
@@ -35,8 +54,9 @@ public class FruitRepositoryImpl implements FruitRepository {
 
 	@Override
 	public Uni<Fruit> findById(UUID id) {
-		String sql = sqlManager.getSql("FindById", Map.of("id", id));
-		return client.preparedQuery(sql).execute(Tuple.of(id)).onItem()
+		String sqlTemplate = sqlManager.getSql("FindById");
+		var query = buildQuery(sqlTemplate, new LinkedHashMap<>(Map.of("id", id)));
+		return client.preparedQuery(query.sql).execute(query.tuple).onItem()
 				.ifNotNull().transform(RowSet::iterator).onItem().ifNotNull()
 				.transform(iterator -> iterator.hasNext() ? Fruit.from(iterator.next()) : null);
 	}
@@ -44,8 +64,9 @@ public class FruitRepositoryImpl implements FruitRepository {
 	@Override
 	public Uni<UUID> create(String name) {
 		UUID uuid = UuidCreator.getTimeOrderedEpoch();
-		String sql = sqlManager.getSql("Create", Map.of("id", uuid, "name", name));
-		return client.preparedQuery(sql).execute(Tuple.of(uuid, name)).onItem().ifNotNull()
+		String sqlTemplate = sqlManager.getSql("Create");
+		var query = buildQuery(sqlTemplate, new LinkedHashMap<>(Map.of("id", uuid, "name", name)));
+		return client.preparedQuery(query.sql).execute(query.tuple).onItem().ifNotNull()
 				.transform(rows -> rows.iterator().next().getUUID("id"));
 	}
 
@@ -81,16 +102,18 @@ public class FruitRepositoryImpl implements FruitRepository {
 
 	@Override
 	public Uni<Fruit> update(UUID id, String name) {
-		String sql = sqlManager.getSql("Update", Map.of("name", name, "id", id));
-		return client.preparedQuery(sql).execute(Tuple.of(name, id)).onItem().ifNotNull()
+		String sqlTemplate = sqlManager.getSql("Update");
+		var query = buildQuery(sqlTemplate, new LinkedHashMap<>(Map.of("name", name, "id", id)));
+		return client.preparedQuery(query.sql).execute(query.tuple).onItem().ifNotNull()
 				.transform(SqlResult::rowCount).onItem().ifNotNull()
 				.transform(integer -> integer > 0 ? new Fruit(id, name) : null);
 	}
 
 	@Override
 	public Uni<Boolean> deleteById(UUID id) {
-		String sql = sqlManager.getSql("DeleteById", Map.of("id", id));
-		return client.preparedQuery(sql).execute(Tuple.of(id)).onItem()
+		String sqlTemplate = sqlManager.getSql("DeleteById");
+		var query = buildQuery(sqlTemplate, new LinkedHashMap<>(Map.of("id", id)));
+		return client.preparedQuery(query.sql).execute(query.tuple).onItem()
 				.transform(rows -> rows.rowCount() >= 1);
 	}
 }
