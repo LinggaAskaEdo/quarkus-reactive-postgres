@@ -1,8 +1,8 @@
 package org.otis.employee.infrastructure;
 
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;
@@ -27,6 +27,8 @@ public class EmployeeSchedulerService {
 			"Full Stack Developer", "Scrum Master", "Technical Lead", "Architect"
 	};
 
+	private final Random random = new Random();
+
 	private final AtomicInteger insertedCount = new AtomicInteger(0);
 
 	private final WebClient webClient;
@@ -41,7 +43,8 @@ public class EmployeeSchedulerService {
 	}
 
 	/**
-	 * Scheduled task that runs at configured interval to fill the employee table with
+	 * Scheduled task that runs at configured interval to fill the employee table
+	 * with
 	 * random employee data from RandomUser API.
 	 */
 	@Scheduled(every = "${employee.scheduler.interval:5m}")
@@ -118,7 +121,7 @@ public class EmployeeSchedulerService {
 							.filter(JsonObject.class::isInstance)
 							.map(JsonObject.class::cast)
 							.map(this::mapToEmployee)
-							.collect(Collectors.toList());
+							.toList();
 
 					return employeeRepository.createBulk(employees)
 							.invoke(() -> RequestContext.setReqId(reqId))
@@ -138,12 +141,11 @@ public class EmployeeSchedulerService {
 
 	private Employee mapToEmployee(JsonObject user) {
 		JsonObject name = user.getJsonObject("name");
-		JsonObject contact = user.getJsonObject("login");
 		String firstName = name.getString("first");
 		String lastName = name.getString("last");
 		String email = user.getString("email");
 		String phone = user.getString("phone");
-		String jobTitle = JOB_TITLES[(int) (Math.random() * JOB_TITLES.length)];
+		String jobTitle = JOB_TITLES[random.nextInt(JOB_TITLES.length)];
 
 		return new Employee(
 				java.util.UUID.randomUUID(),
