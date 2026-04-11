@@ -251,7 +251,7 @@ fruit:
 
 A background job that periodically fetches random employee data from the [RandomUser API](https://randomuser.me/) and inserts them into the database.
 
-### Scheduler Configuration
+### Employee Scheduler Configuration
 
 ```yaml
 employee:
@@ -262,7 +262,7 @@ employee:
     api-url: https://randomuser.me/api/ # RandomUser API endpoint
 ```
 
-### Behavior
+### Employee Behavior
 
 - Fetches realistic fake employee data (names, emails, phones) from RandomUser API
 - Assigns a random job title from a predefined list
