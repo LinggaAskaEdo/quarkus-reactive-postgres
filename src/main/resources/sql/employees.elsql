@@ -5,3 +5,7 @@
 
 @NAME(CountAll)
   SELECT count(*) FROM employees
+
+@NAME(CreateBulkBase)
+  INSERT INTO employees (employee_id, first_name, last_name, email, phone, job_title)
+  VALUES %s ON CONFLICT (employee_id) DO NOTHING

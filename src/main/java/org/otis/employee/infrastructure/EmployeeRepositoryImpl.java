@@ -2,6 +2,7 @@ package org.otis.employee.infrastructure;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;
@@ -12,6 +13,8 @@ import org.otis.shared.util.SqlManager;
 import io.quarkus.runtime.util.StringUtil;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.sqlclient.Pool;
+import io.vertx.mutiny.sqlclient.SqlResult;
+import io.vertx.mutiny.sqlclient.Tuple;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
@@ -66,6 +69,47 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 
 			return dtoEmployees;
 		});
+	}
+
+	@Override
+	public Uni<Integer> createBulk(List<Employee> employees) {
+		if (employees == null || employees.isEmpty()) {
+			return Uni.createFrom().item(0);
+		}
+
+		StringBuilder values = new StringBuilder();
+		Tuple tuple = Tuple.tuple();
+
+		for (int i = 0; i < employees.size(); i++) {
+			Employee emp = employees.get(i);
+			String p1 = "$" + (i * 6 + 1);
+			String p2 = "$" + (i * 6 + 2);
+			String p3 = "$" + (i * 6 + 3);
+			String p4 = "$" + (i * 6 + 4);
+			String p5 = "$" + (i * 6 + 5);
+			String p6 = "$" + (i * 6 + 6);
+
+			if (i > 0) {
+				values.append(", ");
+			}
+			values.append("(").append(p1).append(", ").append(p2).append(", ")
+					.append(p3).append(", ").append(p4).append(", ")
+					.append(p5).append(", ").append(p6).append(")");
+
+			tuple.addUUID(emp.getId());
+			tuple.addString(emp.getFirstName());
+			tuple.addString(emp.getLastName());
+			tuple.addString(emp.getEmail());
+			tuple.addString(emp.getPhone());
+			tuple.addString(emp.getJobTitle());
+		}
+
+		String sqlTemplate = sqlManager.getSql("CreateBulkBase");
+		String fullQuery = sqlTemplate.formatted(values);
+
+		return client.preparedQuery(fullQuery).execute(tuple).onItem()
+				.ifNotNull()
+				.transform(SqlResult::rowCount);
 	}
 
 	/**

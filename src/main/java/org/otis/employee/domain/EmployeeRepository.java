@@ -11,4 +11,6 @@ public interface EmployeeRepository {
 	Uni<List<Employee>> getEmployees(DtoPagingRequest pagingRequest);
 
 	Uni<DtoEmployees> getAllEmployee(DtoPagingRequest pagingRequest);
+
+	Uni<Integer> createBulk(List<Employee> employees);
 }
