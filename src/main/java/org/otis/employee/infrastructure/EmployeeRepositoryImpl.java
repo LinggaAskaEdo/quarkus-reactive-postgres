@@ -2,7 +2,6 @@ package org.otis.employee.infrastructure;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;

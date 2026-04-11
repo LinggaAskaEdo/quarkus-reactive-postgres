@@ -1,10 +1,8 @@
 package org.otis.employee.infrastructure;
 
 import java.util.List;
-import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
 import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;
@@ -14,24 +12,14 @@ import org.slf4j.LoggerFactory;
 
 import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.mutiny.ext.web.client.WebClient;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class EmployeeSchedulerService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeSchedulerService.class);
-
-	private static final String[] FIRST_NAMES = {
-			"John", "Jane", "Alice", "Bob", "Carol", "David", "Emma", "Frank",
-			"Grace", "Henry", "Ivy", "Jack", "Karen", "Leo", "Mia", "Noah",
-			"Olivia", "Peter", "Quinn", "Rachel", "Sam", "Tina", "Uma", "Victor",
-			"Wendy", "Xander", "Yara", "Zane"
-	};
-
-	private static final String[] LAST_NAMES = {
-			"Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
-			"Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez",
-			"Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin"
-	};
 
 	private static final String[] JOB_TITLES = {
 			"Software Engineer", "Product Manager", "Data Analyst", "DevOps Engineer",
@@ -39,21 +27,22 @@ public class EmployeeSchedulerService {
 			"Full Stack Developer", "Scrum Master", "Technical Lead", "Architect"
 	};
 
-	private final Random random = new Random();
 	private final AtomicInteger insertedCount = new AtomicInteger(0);
 
+	private final WebClient webClient;
 	private final EmployeeRepository employeeRepository;
 	private final EmployeeSchedulerConfig schedulerConfig;
 
-	public EmployeeSchedulerService(EmployeeRepository employeeRepository,
+	public EmployeeSchedulerService(WebClient webClient, EmployeeRepository employeeRepository,
 			EmployeeSchedulerConfig schedulerConfig) {
+		this.webClient = webClient;
 		this.employeeRepository = employeeRepository;
 		this.schedulerConfig = schedulerConfig;
 	}
 
 	/**
 	 * Scheduled task that runs at configured interval to fill the employee table with
-	 * random employee data.
+	 * random employee data from RandomUser API.
 	 */
 	@Scheduled(every = "${employee.scheduler.interval:5m}")
 	public void scheduleEmployeeInsertion() {
@@ -67,7 +56,7 @@ public class EmployeeSchedulerService {
 		long startTime = System.currentTimeMillis();
 		LOGGER.info("Starting scheduled employee insertion task...");
 
-		generateAndInsertEmployees(reqId)
+		fetchAndInsertEmployees(reqId)
 				.invoke(() -> RequestContext.setReqId(reqId))
 				.subscribe()
 				.with(
@@ -89,45 +78,79 @@ public class EmployeeSchedulerService {
 		RequestContext.clear();
 	}
 
-	private Uni<Integer> generateAndInsertEmployees(String reqId) {
+	private Uni<Integer> fetchAndInsertEmployees(String reqId) {
 		int minInsert = Math.max(3, schedulerConfig.minInsert());
-		List<Employee> employees = IntStream.range(0, minInsert)
-				.mapToObj(i -> generateRandomEmployee())
-				.toList();
+		String apiUrl = "https://randomuser.me/api/?results=" + minInsert;
 
-		return employeeRepository.createBulk(employees)
-				.invoke(() -> RequestContext.setReqId(reqId))
-				.onItemOrFailure().transformToUni((inserted, failure) -> {
+		return webClient.getAbs(apiUrl)
+				.send()
+				.onItem().transformToUni(response -> {
 					RequestContext.setReqId(reqId);
-					if (failure != null) {
-						LOGGER.warn("Failed to bulk insert employees: {}", failure.getMessage());
-						return Uni.createFrom().item(0);
+					if (response.statusCode() == 200) {
+						return parseAndInsertEmployees(response.bodyAsString(), reqId);
 					} else {
-						LOGGER.debug("Successfully inserted {} employees in bulk", inserted);
-						insertedCount.addAndGet(inserted);
-						return Uni.createFrom().item(inserted);
+						return Uni.createFrom().failure(new RuntimeException(
+								"Failed to fetch employees from API. Status: " + response.statusCode()));
 					}
+				})
+				.onFailure().retry().atMost(3);
+	}
+
+	private Uni<Integer> parseAndInsertEmployees(String jsonString, String reqId) {
+		return Uni.createFrom().item(jsonString)
+				.onItem().transformToUni(json -> {
+					RequestContext.setReqId(reqId);
+					JsonObject root;
+					try {
+						root = new JsonObject(json);
+					} catch (Exception e) {
+						LOGGER.error("Failed to parse RandomUser API response: {}", e.getMessage());
+						return Uni.createFrom().item(0);
+					}
+
+					JsonArray results = root.getJsonArray("results");
+					if (results == null || results.isEmpty()) {
+						LOGGER.warn("No employee data fetched from API");
+						return Uni.createFrom().item(0);
+					}
+
+					List<Employee> employees = results.stream()
+							.filter(JsonObject.class::isInstance)
+							.map(JsonObject.class::cast)
+							.map(this::mapToEmployee)
+							.collect(Collectors.toList());
+
+					return employeeRepository.createBulk(employees)
+							.invoke(() -> RequestContext.setReqId(reqId))
+							.onItemOrFailure().transformToUni((inserted, failure) -> {
+								RequestContext.setReqId(reqId);
+								if (failure != null) {
+									LOGGER.warn("Failed to bulk insert employees: {}", failure.getMessage());
+									return Uni.createFrom().item(0);
+								} else {
+									LOGGER.debug("Successfully inserted {} employees in bulk", inserted);
+									insertedCount.addAndGet(inserted);
+									return Uni.createFrom().item(inserted);
+								}
+							});
 				});
 	}
 
-	private Employee generateRandomEmployee() {
-		String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
-		String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)];
-		String jobTitle = JOB_TITLES[random.nextInt(JOB_TITLES.length)];
-		String email = (firstName + "." + lastName + random.nextInt(1000)).toLowerCase() + "@example.com";
-		String phone = generateRandomPhone();
+	private Employee mapToEmployee(JsonObject user) {
+		JsonObject name = user.getJsonObject("name");
+		JsonObject contact = user.getJsonObject("login");
+		String firstName = name.getString("first");
+		String lastName = name.getString("last");
+		String email = user.getString("email");
+		String phone = user.getString("phone");
+		String jobTitle = JOB_TITLES[(int) (Math.random() * JOB_TITLES.length)];
 
-		return new Employee(UUID.randomUUID(), firstName, lastName, email, phone, jobTitle);
-	}
-
-	private String generateRandomPhone() {
-		return String.format("+1-%03d-%03d-%04d",
-				random.nextInt(900) + 100,
-				random.nextInt(900) + 100,
-				random.nextInt(10000));
-	}
-
-	public int getTotalInsertedCount() {
-		return insertedCount.get();
+		return new Employee(
+				java.util.UUID.randomUUID(),
+				firstName,
+				lastName,
+				email,
+				phone,
+				jobTitle);
 	}
 }
