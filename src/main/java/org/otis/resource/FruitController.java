@@ -13,6 +13,7 @@ import org.otis.shared.dto.FruitCreate;
 import org.otis.shared.dto.FruitPatch;
 
 import io.smallrye.mutiny.Uni;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.groups.ConvertGroup;
 import jakarta.ws.rs.Consumes;
@@ -25,6 +26,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 @Path("fruits")
+@RolesAllowed("**")
 public class FruitController {
 	private final FindAllFruits findAllFruits;
 	private final FindFruitById findFruitById;

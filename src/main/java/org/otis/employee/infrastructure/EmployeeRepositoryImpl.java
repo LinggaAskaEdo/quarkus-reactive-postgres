@@ -16,12 +16,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class EmployeeRepositoryImpl implements EmployeeRepository {
-	private final Pool client;
-	private final SqlManager sqlManager;
-
 	private static final Set<String> ALLOWED_SORT_DIRECTIONS = Set.of("ASC", "DESC");
 	private static final int DEFAULT_LIMIT = 10;
 	private static final int DEFAULT_OFFSET = 0;
+
+	private final Pool client;
+	private final SqlManager sqlManager;
 
 	public EmployeeRepositoryImpl(Pool client) {
 		this.client = client;

@@ -6,6 +6,9 @@ import org.otis.shared.constant.StatusMsgEnum;
 import org.otis.shared.dto.DtoPagingResponse;
 import org.otis.shared.dto.DtoResponse;
 
+import io.vertx.core.json.JsonObject;
+import jakarta.ws.rs.core.Response;
+
 public final class DtoHelper {
 	private DtoHelper() {
 		// Utility class - prevent instantiation
@@ -32,5 +35,16 @@ public final class DtoHelper {
 		response.setRecordsFiltered(recordsFiltered);
 
 		return response;
+	}
+
+	/**
+	 * Build a 500 Internal Server Error JAX-RS response.
+	 */
+	public static Response internalServerError(String error, String message) {
+		return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+				.entity(new JsonObject()
+						.put("error", error)
+						.put("message", message))
+				.build();
 	}
 }

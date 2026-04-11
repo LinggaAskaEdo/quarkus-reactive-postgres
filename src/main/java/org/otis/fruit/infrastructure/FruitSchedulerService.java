@@ -1,10 +1,5 @@
 package org.otis.fruit.infrastructure;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -20,20 +15,23 @@ import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.mutiny.ext.web.client.WebClient;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class FruitSchedulerService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(FruitSchedulerService.class);
 
-	private final HttpClient httpClient = HttpClient.newBuilder().build();
 	private final Random random = new Random();
 	private final AtomicInteger insertedCount = new AtomicInteger(0);
 
+	private final WebClient webClient;
 	private final FruitRepository fruitRepository;
 	private final FruitSchedulerConfig schedulerConfig;
 
-	public FruitSchedulerService(FruitRepository fruitRepository, FruitSchedulerConfig schedulerConfig) {
+	public FruitSchedulerService(WebClient webClient, FruitRepository fruitRepository,
+			FruitSchedulerConfig schedulerConfig) {
+		this.webClient = webClient;
 		this.fruitRepository = fruitRepository;
 		this.schedulerConfig = schedulerConfig;
 	}
@@ -46,7 +44,6 @@ public class FruitSchedulerService {
 	public void scheduleFruitInsertion() {
 		if (!schedulerConfig.enabled()) {
 			LOGGER.debug("Fruit scheduler is disabled");
-
 			return;
 		}
 
@@ -78,36 +75,28 @@ public class FruitSchedulerService {
 	}
 
 	private Uni<Integer> fetchAndInsertFruits(String reqId) {
-		return Uni.createFrom().<String>emitter(emitter -> {
-			RequestContext.setReqId(reqId);
-			try {
-				HttpRequest request = HttpRequest.newBuilder()
-						.uri(URI.create(schedulerConfig.apiUrl()))
-						.GET()
-						.build();
-
-				HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-				if (response.statusCode() == 200) {
-					emitter.complete(response.body());
-				} else {
-					emitter.fail(new RuntimeException(
-							"Failed to fetch fruits from API. Status: " + response.statusCode()));
-				}
-			} catch (IOException e) {
-				emitter.fail(e);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				emitter.fail(e);
-			}
-		}).onFailure().retry().atMost(3)
-				.chain(jsonString -> {
+		return webClient.getAbs(schedulerConfig.apiUrl())
+				.send()
+				.onItem().transformToUni(response -> {
 					RequestContext.setReqId(reqId);
-					// Parse JSON array string
+					if (response.statusCode() == 200) {
+						return handleSuccessResponse(response.bodyAsString(), reqId);
+					} else {
+						return Uni.createFrom().failure(new RuntimeException(
+								"Failed to fetch fruits from API. Status: " + response.statusCode()));
+					}
+				})
+				.onFailure().retry().atMost(3);
+	}
+
+	private Uni<Integer> handleSuccessResponse(String jsonString, String reqId) {
+		return Uni.createFrom().item(jsonString)
+				.onItem().transformToUni(json -> {
+					RequestContext.setReqId(reqId);
 					JsonArray jsonArray;
 
 					try {
-						jsonArray = new JsonArray(jsonString);
+						jsonArray = new JsonArray(json);
 					} catch (Exception e) {
 						LOGGER.error("Failed to parse API response: {}", e.getMessage());
 						return Uni.createFrom().item(0);
@@ -124,7 +113,6 @@ public class FruitSchedulerService {
 							.map(JsonObject.class::cast)
 							.collect(Collectors.toList());
 
-					// Shuffle the list
 					Collections.shuffle(fruits, random);
 
 					// Get configurable minimum count (enforce minimum of 3)
@@ -134,7 +122,6 @@ public class FruitSchedulerService {
 					int count = Math.min(minInsert, fruits.size());
 					List<JsonObject> selectedFruits = fruits.subList(0, count);
 
-					// Insert fruits in bulk
 					return insertFruitsBulk(selectedFruits, reqId);
 				});
 	}

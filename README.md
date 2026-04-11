@@ -7,7 +7,7 @@ If you want to learn more about Quarkus, please visit its website: <https://quar
 ## Prerequisites
 
 - Java 21+
-- Docker (for PostgreSQL)
+- Docker (for PostgreSQL and Keycloak)
 
 ## Database Setup
 
@@ -23,6 +23,73 @@ Run database migrations:
 make flyway-up
 ```
 
+## Keycloak Setup
+
+This project uses Keycloak for OAuth2/OIDC authentication. All API endpoints (except `/auth/*`) require a valid Bearer token.
+
+### 1. Start Keycloak Container
+
+```shell
+docker run -d \
+ --name keycloak-docker \
+ -p 127.0.0.1:8080:8080 \
+ -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+ -e KC_BOOTSTRAP_ADMIN_PASSWORD=change_me \
+ --network otis-network \
+ quay.io/keycloak/keycloak:latest \
+ start \
+ --hostname=localhost \
+ --http-enabled=true \
+ --db=postgres \
+ --features=token-exchange \
+ --db-url=jdbc:postgresql://postgres-docker:5432/keycloak \
+ --db-username=postgres \
+ --db-password=a5k4CooL
+```
+
+> **Note:** The Keycloak database must exist in PostgreSQL. Create it with:
+>
+> ```shell
+> docker exec postgres-docker psql -U postgres -c "CREATE DATABASE keycloak;"
+> ```
+
+### 2. Configure Realm and Client
+
+1. Open Keycloak Admin Console: `http://localhost:8080` (admin/change_me)
+2. Create a new realm named `quarkus`
+3. Create a confidential client named `quarkus-app`:
+   - **Client authentication**: On
+   - **Valid redirect URIs**: `*`
+   - Note the generated **Client secret**
+4. Set the client secret in `application.yml` or via `KEYCLOAK_CLIENT_SECRET` env var
+
+### 3. Register and Login
+
+Users can register and login directly via the API (no manual Keycloak UI needed):
+
+```shell
+# Register
+curl -X POST http://localhost:8181/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user1","email":"user1@test.com","password":"password123"}'
+
+# Login
+curl -X POST http://localhost:8181/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user1","password":"password123"}'
+```
+
+### Configuration
+
+| Env Variable              | Default                 | Description                                     |
+| ------------------------- | ----------------------- | ----------------------------------------------- |
+| `KEYCLOAK_URL`            | `http://localhost:8080` | Keycloak server URL                             |
+| `KEYCLOAK_REALM`          | `quarkus`               | Keycloak realm name                             |
+| `KEYCLOAK_CLIENT_ID`      | `quarkus-app`           | OAuth2 client ID                                |
+| `KEYCLOAK_CLIENT_SECRET`  | `secret`                | OAuth2 client secret                            |
+| `KEYCLOAK_ADMIN_USERNAME` | `admin`                 | Keycloak admin username (for user registration) |
+| `KEYCLOAK_ADMIN_PASSWORD` | `change_me`             | Keycloak admin password (for user registration) |
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
@@ -31,7 +98,7 @@ You can run your application in dev mode that enables live coding using:
 ./mvnw compile quarkus:dev
 ```
 
-> **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+> **_NOTE:_** Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8181/q/dev/>.
 
 ## Packaging and running the application
 
@@ -102,13 +169,67 @@ make flyway-clean    # Drop all tables (use with caution!)
 | POST   | `/employees/1` | Get paginated employees |
 | POST   | `/employees/2` | Get paginated employees |
 
+### Authentication
+
+| Method | Path             | Description             |
+| ------ | ---------------- | ----------------------- |
+| POST   | `/auth/register` | Register a new user     |
+| POST   | `/auth/login`    | Login and get JWT token |
+
+#### Register User
+
+```shell
+curl -X POST http://localhost:8181/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "securepassword123",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
+```
+
+#### Login
+
+```shell
+curl -X POST http://localhost:8181/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "password": "securepassword123"
+  }'
+```
+
+Response:
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 300,
+  "refresh_token": "eyJ...",
+  "token_type": "Bearer"
+}
+```
+
+#### Use Token in API Requests
+
+```shell
+TOKEN=$(curl -s -X POST http://localhost:8181/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"johndoe","password":"securepassword123"}' \
+  | jq -r .access_token)
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8181/fruits
+```
+
 Import the Postman collection from `etc/quarkus-reactive-postgres.postman_collection.json` for ready-made requests.
 
 ## Fruit Scheduler
 
 A background job that periodically fetches random fruit names from the [FruityVice API](https://www.fruityvice.com/) and inserts them into the database.
 
-### Configuration
+### Scheduler Configuration
 
 ```yaml
 fruit:
@@ -125,6 +246,18 @@ fruit:
 - Inserts a configurable minimum number of fruits per run
 - Uses bulk insert with `ON CONFLICT DO NOTHING` to skip duplicates
 - Each run logs a unique `req_id` (UUID v7, 8 chars) and `processTimeMs`
+
+## WebClient Configuration
+
+HTTP calls use a shared Vert.x `WebClient` (produced by `WebClients.java`), configurable via `application.yml`:
+
+```yaml
+webclient:
+  max-pool-size: 20 # Maximum number of HTTP connections in the pool
+  connect-timeout: 5000 # Connection timeout in milliseconds
+  idle-timeout: 60000 # Close idle connections after this time (ms)
+  max-wait-queue-size: 5000 # Maximum requests waiting for a connection
+```
 
 ## Logging
 
@@ -204,7 +337,10 @@ src/main/java/org/otis/
 ├── shared/                      # Cross-cutting concerns
 │   ├── constant/                # Constants and enums
 │   ├── dto/                     # Shared DTOs (requests, responses, paging)
-│   └── util/                    # Helper utilities (LoggingFilter, RequestContext, SqlManager)
+│   └── util/                    # Helper utilities (LoggingFilter, RequestContext, SqlManager, WebClients)
+│
+├── auth/                        # Auth bounded context
+│   └── usecase/                 # RegisterUser, LoginUser
 │
 ├── fruit/                       # Fruit bounded context
 │   ├── domain/                  # Entity and repository interface
@@ -232,6 +368,7 @@ src/main/resources/
 - **Use case classes** — single-responsibility, testable business logic
 - **Constructor injection** — explicit dependencies, no field injection
 - **Externalized SQL** — SQL queries in `.elsql` files via ELSql library
+- **Vert.x WebClient** — HTTP calls via shared `WebClient` producer (configurable timeouts & pool)
 - **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
 - **Context propagation** — `req_id` propagated across async thread boundaries
 

@@ -20,7 +20,37 @@ quarkus:
     propagated-types: # MDC keys to propagate across threads
       - org.jboss.logmanager.MDC
   http: # HTTP server configuration
-    port: 8080 # Server port
+    port: 8181 # Server port
+    auth:
+      permission:
+        # Allow health, dev, and auth paths without auth
+        /q/*: permit
+        /health/*: permit
+        /auth/*: permit
+        # Require authentication for all API paths
+        /fruits/*: authenticated
+        /employees/*: authenticated
+  oidc: # OIDC/OAuth2 configuration (Keycloak)
+    auth-server-url: ${KEYCLOAK_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:quarkus} # Keycloak realm URL
+    client-id: ${KEYCLOAK_CLIENT_ID:quarkus-app} # OAuth2 client ID
+    credentials:
+      secret: ${KEYCLOAK_CLIENT_SECRET:secret} # OAuth2 client secret
+    application-type: service # Service-to-service app (validates JWT tokens)
+    token-state-manager:
+      encryption-required: false # Disable encryption for dev mode
+
+# Keycloak Admin API configuration (for user registration)
+keycloak:
+  admin:
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin} # Keycloak admin username
+    password: ${KEYCLOAK_ADMIN_PASSWORD:change_me} # Keycloak admin password
+
+# Vert.x WebClient configuration
+webclient:
+  max-pool-size: 20 # Maximum number of HTTP connections in the pool
+  connect-timeout: 5000 # Connection timeout in milliseconds
+  idle-timeout: 60000 # Idle connection timeout in milliseconds (close idle connections after this time)
+  max-wait-queue-size: 5000 # Maximum number of requests waiting for a connection
 
 # Fruit scheduler configuration
 fruit:

@@ -1,6 +1,7 @@
 package org.otis.shared.util;
 
 import org.jboss.logging.MDC;
+import static org.otis.shared.constant.CommonConstant.REQ_ID_KEY;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 
@@ -9,7 +10,6 @@ import com.github.f4b6a3.uuid.UuidCreator;
  * Automatically available in JSON logs when MDC is enabled.
  */
 public final class RequestContext {
-	private static final String REQ_ID_KEY = "req_id";
 
 	private RequestContext() {
 		// Utility class
