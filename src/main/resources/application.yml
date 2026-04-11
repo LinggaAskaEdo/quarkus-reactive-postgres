@@ -69,3 +69,4 @@ employee:
     interval: 5m # Scheduler interval expression (e.g., 1m, 5m, 1h)
     min-insert: 10 # Minimum number of employees to insert per run (minimum value is 3)
     enabled: true # Enable or disable the scheduler
+    api-url: https://randomuser.me/api/ # URL of the RandomUser API endpoint

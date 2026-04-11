@@ -83,7 +83,7 @@ public class EmployeeSchedulerService {
 
 	private Uni<Integer> fetchAndInsertEmployees(String reqId) {
 		int minInsert = Math.max(3, schedulerConfig.minInsert());
-		String apiUrl = "https://randomuser.me/api/?results=" + minInsert;
+		String apiUrl = schedulerConfig.apiUrl() + "?results=" + minInsert;
 
 		return webClient.getAbs(apiUrl)
 				.send()

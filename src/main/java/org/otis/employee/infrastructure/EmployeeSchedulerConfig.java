@@ -22,4 +22,10 @@ public interface EmployeeSchedulerConfig {
 	 */
 	@WithDefault("true")
 	boolean enabled();
+
+	/**
+	 * URL of the RandomUser API endpoint
+	 */
+	@WithDefault("https://randomuser.me/api/")
+	String apiUrl();
 }
