@@ -247,6 +247,28 @@ fruit:
 - Uses bulk insert with `ON CONFLICT DO NOTHING` to skip duplicates
 - Each run logs a unique `req_id` (UUID v7, 8 chars) and `processTimeMs`
 
+## Employee Scheduler
+
+A background job that periodically fetches random employee data from the [RandomUser API](https://randomuser.me/) and inserts them into the database.
+
+### Scheduler Configuration
+
+```yaml
+employee:
+  scheduler:
+    interval: 5m # Scheduler interval (e.g., 1m, 5m, 1h)
+    min-insert: 10 # Minimum employees to insert per run (minimum: 3)
+    enabled: true # Enable/disable the scheduler
+    api-url: https://randomuser.me/api/ # RandomUser API endpoint
+```
+
+### Behavior
+
+- Fetches realistic fake employee data (names, emails, phones) from RandomUser API
+- Assigns a random job title from a predefined list
+- Uses bulk insert with `ON CONFLICT DO NOTHING` to skip duplicates
+- Each run logs a unique `req_id` (UUID v7, 8 chars) and `processTimeMs`
+
 ## WebClient Configuration
 
 HTTP calls use a shared Vert.x `WebClient` (produced by `WebClients.java`), configurable via `application.yml`:
@@ -349,7 +371,7 @@ src/main/java/org/otis/
 │
 ├── employee/                    # Employee bounded context
 │   ├── domain/
-│   ├── infrastructure/
+│   ├── infrastructure/          # Repository implementation + scheduler service
 │   └── usecase/
 │
 └── resource/                    # REST controllers (entry points)
@@ -367,8 +389,10 @@ src/main/resources/
 - **Repository pattern** — domain interfaces abstracted from infrastructure
 - **Use case classes** — single-responsibility, testable business logic
 - **Constructor injection** — explicit dependencies, no field injection
-- **Externalized SQL** — SQL queries in `.elsql` files via ELSql library
+- **Externalized SQL** — SQL queries in `.elsql` files via ELSql library (ELSql named params converted to positional `$N` for safe `preparedQuery`)
+- **Background schedulers** — Fruit (FruityVice API) and Employee (RandomUser API) data seeding
 - **Vert.x WebClient** — HTTP calls via shared `WebClient` producer (configurable timeouts & pool)
+- **JSON auth errors** — custom exception mappers return JSON instead of plain text for `AuthenticationFailedException` and `NotAuthorizedException`
 - **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
 - **Context propagation** — `req_id` propagated across async thread boundaries
 
