@@ -44,7 +44,7 @@ docker run -d \
  --features=token-exchange \
  --db-url=jdbc:postgresql://postgres-docker:5432/keycloak \
  --db-username=postgres \
- --db-password=a5k4CooL
+ --db-password=postgres
 ```
 
 > **Note:** The Keycloak database must exist in PostgreSQL. Create it with:
