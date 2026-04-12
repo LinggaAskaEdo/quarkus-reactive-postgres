@@ -26,4 +26,7 @@ public class AuthRegisterRequest {
 	@NotBlank
 	@Size(min = 3, max = 100)
 	private String lastName;
+
+	@NotBlank
+	private String groupName;
 }

@@ -1,4 +1,4 @@
-.PHONY: help build clean run test test-integration package package-native docker docker-jvm docker-legacy-jar docker-native docker-native-micro lint format flyway-up flyway-repair flyway-clean flyway-status
+.PHONY: help build clean run test test-integration package package-native docker docker-jvm docker-legacy-jar docker-native docker-native-micro lint format flyway-up flyway-repair flyway-clean flyway-status stress-test-login stress-test-register
 
 # Default target
 .DEFAULT_GOAL := help
@@ -71,8 +71,9 @@ docker-run-native: ## Run the native Docker container
 
 ##@ Cleanup
 
-clean: ## Clean build artifacts
+clean: ## Clean build artifacts and stress test results
 	./mvnw clean
+	rm -rf etc/stress-test/apache-benchmark/results/*
 
 ##@ Code Quality
 
@@ -133,3 +134,11 @@ flyway-status: ## Show migration history and current state
 	-Dflyway.user=$${DB_USER:-postgres} \
 	-Dflyway.password=$${DB_PASS:-postgres} \
 	-Dflyway.locations=filesystem:src/main/resources/db/migration
+
+##@ Stress Tests
+
+stress-test-login: ## Run stress test for /auth/login endpoint
+	@./etc/stress-test/apache-benchmark/stress-test-login.sh
+
+stress-test-register: ## Run stress test for /auth/register endpoint
+	@./etc/stress-test/apache-benchmark/stress-test-register.sh

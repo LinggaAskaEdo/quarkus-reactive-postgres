@@ -206,10 +206,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### Authentication
 
-| Method | Path             | Description             |
-| ------ | ---------------- | ----------------------- |
-| POST   | `/auth/register` | Register a new user     |
-| POST   | `/auth/login`    | Login and get JWT token |
+| Method | Path             | Description               |
+| ------ | ---------------- | ------------------------- |
+| POST   | `/auth/register` | Register a new user       |
+| POST   | `/auth/login`    | Login and get JWT token   |
+| GET    | `/auth/groups`   | Get available user groups |
 
 #### Register User
 
@@ -221,8 +222,25 @@ curl -X POST http://localhost:8181/auth/register \
     "email": "john@example.com",
     "password": "securepassword123",
     "firstName": "John",
-    "lastName": "Doe"
+    "lastName": "Doe",
+    "groupName": "user"
   }'
+```
+
+The `groupName` field is optional. If omitted, the user will not be assigned to any group. Available groups are: `admin`, `user`, `guest`.
+
+#### Get Available Groups
+
+```shell
+curl http://localhost:8181/auth/groups
+```
+
+Response:
+
+```json
+{
+  "groups": ["admin", "user", "guest"]
+}
 ```
 
 #### Login
@@ -259,6 +277,68 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8181/fruits
 ```
 
 Import the Postman collection from `etc/quarkus-reactive-postgres.postman_collection.json` for ready-made requests.
+
+## Stress Testing
+
+Run load tests against the API using Apache Benchmark (`ab`). Results are saved to `etc/stress-test/apache-benchmark/results/`.
+
+### Requirements
+
+- `ab` (Apache Benchmark) — install via `apt install apache2-utils` (Debian/Ubuntu) or `brew install httpd` (macOS)
+- Application must be running: `make run`
+
+### Available Tests
+
+```shell
+make stress-test-login      # Stress test /auth/login endpoint
+make stress-test-register   # Stress test /auth/register endpoint
+```
+
+### Stress Test Parameters
+
+| Env Variable     | Default                 | Description              |
+| ---------------- | ----------------------- | ------------------------ |
+| `BASE_URL`       | `http://localhost:8181` | Application base URL     |
+| `TOTAL_REQUESTS` | `500`                   | Total number of requests |
+| `CONCURRENCY`    | `10`                    | Concurrent requests      |
+| `TEST_USER`      | `testuser`              | Username for login tests |
+| `TEST_PASSWORD`  | `Test123456`            | Password for login tests |
+
+### Example
+
+```shell
+TOTAL_REQUESTS=1000 CONCURRENCY=50 make stress-test-login
+```
+
+### Output
+
+Each test produces:
+
+- **Raw output**: `etc/stress-test/apache-benchmark/results/<timestamp>-raw.txt` — full `ab` verbose output
+- **CSV data**: `etc/stress-test/apache-benchmark/results/<timestamp>.txt` — per-request timing data for charting
+- **Parsed percentiles**: `etc/stress-test/apache-benchmark/results/<timestamp>-parsed.txt` — P90, P95, P99 summary
+
+### Benchmark Results (Login)
+
+| Metric      | Value       |
+| ----------- | ----------- |
+| Requests    | 500         |
+| Concurrency | 10          |
+| Failed      | 0           |
+| Throughput  | 79.19 req/s |
+| P50         | 125 ms      |
+| P90         | 147 ms      |
+| P95         | 158 ms      |
+| P99         | 172 ms      |
+| Max         | 181 ms      |
+
+> Results may vary depending on Keycloak response time and network latency.
+
+### Cleanup
+
+```shell
+make clean   # Removes build artifacts and stress test results
+```
 
 ## Fruit Scheduler
 
@@ -415,7 +495,7 @@ src/main/java/org/otis/
 │   └── util/                    # Helper utilities (LoggingFilter, RequestContext, SqlManager, WebClients)
 │
 ├── auth/                        # Auth bounded context
-│   └── usecase/                 # RegisterUser, LoginUser
+│   └── usecase/                 # RegisterUser, LoginUser, KeycloakGroupInitializer
 │
 ├── fruit/                       # Fruit bounded context
 │   ├── domain/                  # Entity and repository interface
@@ -434,6 +514,13 @@ src/main/resources/
 │   ├── fruits.elsql             # Fruit repository queries
 │   └── employees.elsql          # Employee repository queries
 └── db/migration/                # Flyway migration scripts
+
+etc/
+├── stress-test/                 # Stress test scripts
+│   ├── apache-benchmark/        # Apache Benchmark scripts
+│   │   └── results/             # Test results (generated)
+│   └── k6/                      # k6 scripts (placeholder)
+└── quarkus-reactive-postgres.postman_collection.json
 ```
 
 ### Architecture Principles
@@ -448,6 +535,8 @@ src/main/resources/
 - **JSON auth errors** — custom exception mappers return JSON instead of plain text for `AuthenticationFailedException` and `NotAuthorizedException`
 - **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
 - **Context propagation** — `req_id` propagated across async thread boundaries
+- **Keycloak groups** — default groups (`admin`, `user`, `guest`) created at startup; users can be assigned to groups during registration
+- **Stress testing** — Apache Benchmark scripts for login/register endpoints with P90/P95/P99 reporting
 
 ## Related Guides
 
