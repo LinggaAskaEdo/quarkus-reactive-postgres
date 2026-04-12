@@ -1,6 +1,8 @@
-package org.otis.employee.usecase;
+package org.otis.fruit.usecase;
 
-import org.otis.employee.domain.EmployeeRepository;
+import java.util.UUID;
+
+import org.otis.fruit.domain.FruitRepository;
 import org.otis.shared.constant.StatusMsgEnum;
 import org.otis.shared.dto.DtoPagingRequest;
 import org.otis.shared.dto.DtoPagingResponse;
@@ -10,17 +12,17 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
-public class GetAllEmployees {
-	private final EmployeeRepository employeeRepository;
+public class GetFruits {
+	private final FruitRepository fruitRepository;
 
-	public GetAllEmployees(EmployeeRepository employeeRepository) {
-		this.employeeRepository = employeeRepository;
+	public GetFruits(FruitRepository fruitRepository) {
+		this.fruitRepository = fruitRepository;
 	}
 
-	public Uni<DtoPagingResponse> execute(DtoPagingRequest pagingRequest) {
-		return employeeRepository.getAllEmployee(pagingRequest).onItem().ifNotNull()
+	public Uni<DtoPagingResponse> execute(DtoPagingRequest pagingRequest, UUID id) {
+		return fruitRepository.getFruits(pagingRequest, id).onItem().ifNotNull()
 				.transform(resp -> DtoHelper.constructPagingResponse(StatusMsgEnum.SUCCESS,
-						"Data found !!!", resp.getEmployees(), resp.getEmployees().size(), resp.getCount()))
+						"Data found !!!", resp.getFruits(), resp.getFruits().size(), resp.getCount()))
 				.onItem().ifNull()
 				.continueWith(() -> DtoHelper.constructPagingResponse(StatusMsgEnum.FAILED,
 						"Data not found !!!", null, 0, 0))

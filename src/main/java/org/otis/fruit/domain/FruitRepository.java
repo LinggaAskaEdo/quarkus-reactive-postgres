@@ -3,12 +3,13 @@ package org.otis.fruit.domain;
 import java.util.List;
 import java.util.UUID;
 
+import org.otis.shared.dto.DtoFruits;
+import org.otis.shared.dto.DtoPagingRequest;
+
 import io.smallrye.mutiny.Uni;
 
 public interface FruitRepository {
-	Uni<List<Fruit>> findAll();
-
-	Uni<Fruit> findById(UUID id);
+	Uni<DtoFruits> getFruits(DtoPagingRequest pagingRequest, UUID id);
 
 	Uni<UUID> create(String name);
 

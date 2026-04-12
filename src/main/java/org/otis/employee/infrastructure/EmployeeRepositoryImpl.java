@@ -1,13 +1,21 @@
 package org.otis.employee.infrastructure;
 
+import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import org.otis.employee.domain.Employee;
 import org.otis.employee.domain.EmployeeRepository;
+import org.otis.shared.constant.FilterParamNames;
+import org.otis.shared.constant.PagingConstants;
 import org.otis.shared.dto.DtoEmployees;
 import org.otis.shared.dto.DtoPagingRequest;
-import org.otis.shared.util.SqlManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.opengamma.elsql.ElSql;
+import com.opengamma.elsql.ElSqlConfig;
 
 import io.quarkus.runtime.util.StringUtil;
 import io.smallrye.mutiny.Uni;
@@ -18,53 +26,63 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class EmployeeRepositoryImpl implements EmployeeRepository {
-	private static final Set<String> ALLOWED_SORT_DIRECTIONS = Set.of("ASC", "DESC");
-	private static final int DEFAULT_LIMIT = 10;
-	private static final int DEFAULT_OFFSET = 0;
+	private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeRepositoryImpl.class);
 
 	private final Pool client;
-	private final SqlManager sqlManager;
+	private final ElSql elSql;
 
 	public EmployeeRepositoryImpl(Pool client) {
 		this.client = client;
-		this.sqlManager = new SqlManager("sql/employees.elsql");
+		URL resource = Thread.currentThread().getContextClassLoader().getResource("sql/employees.elsql");
+		if (resource == null) {
+			throw new IllegalArgumentException("ELSql resource not found: sql/employees.elsql");
+		}
+		this.elSql = ElSql.parse(ElSqlConfig.POSTGRES, resource);
 	}
 
 	@Override
-	public Uni<List<Employee>> getEmployees(DtoPagingRequest pagingRequest) {
+	public Uni<DtoEmployees> getEmployees(DtoPagingRequest pagingRequest) {
 		String orderColumn = getSafeOrderColumn(pagingRequest.getOrder());
 		String sortDirection = getSafeSortDirection(pagingRequest.getSort());
-		int limit = pagingRequest.getLimit() > 0 ? pagingRequest.getLimit() : DEFAULT_LIMIT;
-		int offset = pagingRequest.getOffset() >= 0 ? pagingRequest.getOffset() : DEFAULT_OFFSET;
+		int limit = pagingRequest.getLimit() > 0 ? pagingRequest.getLimit() : PagingConstants.DEFAULT_LIMIT;
+		int offset = pagingRequest.getOffset() >= 0 ? pagingRequest.getOffset() : PagingConstants.DEFAULT_OFFSET;
 
-		String sql = sqlManager.getSql("FindAllPaged").formatted(
-				orderColumn, sortDirection, limit, offset);
+		Map<String, Object> params = new HashMap<>();
+		params.put("orderColumn", orderColumn);
+		params.put("sortDirection", sortDirection);
+		params.put("limit", limit);
+		params.put("offset", offset);
 
-		return client.query(sql).execute().map(rows -> rows.stream().map(row -> new Employee(row.getUUID(0),
-				row.getString(1), row.getString(2), row.getString(3), row.getString(4), row.getString(5))).toList());
-	}
+		if (!StringUtil.isNullOrEmpty(pagingRequest.getFirstName())) {
+			params.put(FilterParamNames.EMPLOYEE_FIRST_NAME, "'%" + pagingRequest.getFirstName().toLowerCase() + "%'");
+		}
 
-	@Override
-	public Uni<DtoEmployees> getAllEmployee(DtoPagingRequest pagingRequest) {
-		String orderColumn = getSafeOrderColumn(pagingRequest.getOrder());
-		String sortDirection = getSafeSortDirection(pagingRequest.getSort());
-		int limit = pagingRequest.getLimit() > 0 ? pagingRequest.getLimit() : DEFAULT_LIMIT;
-		int offset = pagingRequest.getOffset() >= 0 ? pagingRequest.getOffset() : DEFAULT_OFFSET;
+		if (!StringUtil.isNullOrEmpty(pagingRequest.getLastName())) {
+			params.put(FilterParamNames.EMPLOYEE_LAST_NAME, "'%" + pagingRequest.getLastName().toLowerCase() + "%'");
+		}
 
-		String sql = sqlManager.getSql("FindAllPaged").formatted(
-				orderColumn, sortDirection, limit, offset);
-		String sqlCount = sqlManager.getSql("CountAll");
+		if (!StringUtil.isNullOrEmpty(pagingRequest.getEmail())) {
+			params.put(FilterParamNames.EMPLOYEE_EMAIL, "'%" + pagingRequest.getEmail().toLowerCase() + "%'");
+		}
+
+		String sql = elSql.getSql("FindAllPaged", params);
+		String sqlCount = elSql.getSql("CountAll", params);
+
+		LOGGER.info(sql);
+		LOGGER.info(sqlCount);
 
 		Uni<List<Employee>> listUni = client.query(sql).execute()
-				.map(rows -> rows.stream().map(row -> new Employee(row.getUUID(0), row.getString(1), row.getString(2),
-						row.getString(3), row.getString(4), row.getString(5))).toList());
+				.map(rows -> rows.stream().map(row -> new Employee(row.getUUID(0),
+						row.getString(1), row.getString(2), row.getString(3), row.getString(4), row.getString(5)))
+						.toList());
 
-		Uni<Long> countUni = client.query(sqlCount).execute().map(rows -> rows.iterator().next().getLong(0));
+		Uni<Long> countUni = client.query(sqlCount).execute()
+				.map(rows -> rows.iterator().next().getLong(0));
 
-		return Uni.combine().all().unis(listUni, countUni).asTuple().map(tuple -> {
+		return Uni.combine().all().unis(listUni, countUni).asTuple().map(tuple2 -> {
 			DtoEmployees dtoEmployees = new DtoEmployees();
-			dtoEmployees.setEmployees(tuple.getItem1());
-			dtoEmployees.setCount(tuple.getItem2().intValue());
+			dtoEmployees.setEmployees(tuple2.getItem1());
+			dtoEmployees.setCount(tuple2.getItem2().intValue());
 
 			return dtoEmployees;
 		});
@@ -91,6 +109,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 			if (i > 0) {
 				values.append(", ");
 			}
+
 			values.append("(").append(p1).append(", ").append(p2).append(", ")
 					.append(p3).append(", ").append(p4).append(", ")
 					.append(p5).append(", ").append(p6).append(")");
@@ -103,10 +122,14 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 			tuple.addString(emp.getJobTitle());
 		}
 
-		String sqlTemplate = sqlManager.getSql("CreateBulkBase");
-		String fullQuery = sqlTemplate.formatted(values);
+		Map<String, Object> params = new HashMap<>();
+		params.put("values", values.toString());
 
-		return client.preparedQuery(fullQuery).execute(tuple).onItem()
+		String sql = elSql.getSql("CreateBulkBase", params);
+
+		LOGGER.info(sql);
+
+		return client.preparedQuery(sql).execute(tuple).onItem()
 				.ifNotNull()
 				.transform(SqlResult::rowCount);
 	}
@@ -120,7 +143,7 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 		}
 
 		String upperSort = sort.toUpperCase();
-		if (ALLOWED_SORT_DIRECTIONS.contains(upperSort)) {
+		if (PagingConstants.ALLOWED_SORT_DIRECTIONS.contains(upperSort)) {
 			return upperSort;
 		}
 

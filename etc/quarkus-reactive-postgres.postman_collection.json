@@ -86,7 +86,7 @@
       "name": "Fruits",
       "item": [
         {
-          "name": "Get All Fruits",
+          "name": "Get Fruits (Paginated)",
           "request": {
             "method": "GET",
             "header": [
@@ -96,32 +96,39 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/fruits",
+              "raw": "{{base_url}}/fruits?order=name&sort=ASC&limit=10&offset=0&name=apple",
               "host": ["{{base_url}}"],
-              "path": ["fruits"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Fruit By ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/fruits/:id",
-              "host": ["{{base_url}}"],
-              "path": ["fruits", ":id"],
-              "variable": [
+              "path": ["fruits"],
+              "query": [
+                {
+                  "key": "order",
+                  "value": "name",
+                  "description": "Sort column: id, name"
+                },
+                {
+                  "key": "sort",
+                  "value": "ASC",
+                  "description": "Sort direction: ASC, DESC"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Page size"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Pagination offset"
+                },
+                {
+                  "key": "name",
+                  "value": "apple",
+                  "description": "Filter by name (partial, case-insensitive)"
+                },
                 {
                   "key": "id",
-                  "value": "550e8400-e29b-41d4-a716-446655440000",
-                  "description": "Fruit UUID"
+                  "value": "",
+                  "description": "Filter by exact UUID"
                 }
               ]
             }
@@ -211,53 +218,56 @@
       "name": "Employees",
       "item": [
         {
-          "name": "Get Employees (Method 1)",
+          "name": "Get Employees (Paginated)",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"offset\": 0,\n  \"limit\": 10,\n  \"search\": {\n    \"name\": \"John\"\n  },\n  \"order\": \"lastName\",\n  \"sort\": \"ASC\"\n}"
-            },
             "url": {
-              "raw": "{{base_url}}/employees/1",
+              "raw": "{{base_url}}/employees?order=id&sort=ASC&limit=10&offset=0&firstName=John&lastName=Doe&email=example.com",
               "host": ["{{base_url}}"],
-              "path": ["employees", "1"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Employees (Method 2)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"offset\": 0,\n  \"limit\": 10,\n  \"search\": {\n    \"name\": \"Jane\"\n  },\n  \"order\": \"firstName\",\n  \"sort\": \"DESC\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/employees/2",
-              "host": ["{{base_url}}"],
-              "path": ["employees", "2"]
+              "path": ["employees"],
+              "query": [
+                {
+                  "key": "order",
+                  "value": "id",
+                  "description": "Sort column: id, firstName, lastName, email, phone, hireDate, jobTitle"
+                },
+                {
+                  "key": "sort",
+                  "value": "ASC",
+                  "description": "Sort direction: ASC, DESC"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Page size"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Pagination offset"
+                },
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "description": "Filter by first name (partial, case-insensitive)"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "description": "Filter by last name (partial, case-insensitive)"
+                },
+                {
+                  "key": "email",
+                  "value": "example.com",
+                  "description": "Filter by email (partial, case-insensitive)"
+                }
+              ]
             }
           },
           "response": []

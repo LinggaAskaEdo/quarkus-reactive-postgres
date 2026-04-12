@@ -154,20 +154,55 @@ make flyway-clean    # Drop all tables (use with caution!)
 
 ### Fruits
 
-| Method | Path           | Description     |
-| ------ | -------------- | --------------- |
-| GET    | `/fruits`      | Get all fruits  |
-| GET    | `/fruits/{id}` | Get fruit by ID |
-| POST   | `/fruits`      | Create a fruit  |
-| PATCH  | `/fruits`      | Update a fruit  |
-| DELETE | `/fruits/{id}` | Delete a fruit  |
+| Method | Path           | Description            |
+| ------ | -------------- | ---------------------- |
+| GET    | `/fruits`      | Get fruits (paginated) |
+| POST   | `/fruits`      | Create a fruit         |
+| PATCH  | `/fruits`      | Update a fruit         |
+| DELETE | `/fruits/{id}` | Delete a fruit         |
+
+**GET `/fruits` Query Parameters:**
+
+| Param    | Default | Description                                |
+| -------- | ------- | ------------------------------------------ |
+| `order`  | `name`  | Sort column: `id`, `name`                  |
+| `sort`   | `ASC`   | Sort direction: `ASC`, `DESC`              |
+| `limit`  | `10`    | Page size                                  |
+| `offset` | `0`     | Pagination offset                          |
+| `id`     | —       | Filter by exact UUID                       |
+| `name`   | —       | Filter by name (partial, case-insensitive) |
+
+**Example:**
+
+```shell
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8181/fruits?order=name&sort=ASC&limit=10&offset=0&name=apple"
+```
 
 ### Employees
 
-| Method | Path           | Description             |
-| ------ | -------------- | ----------------------- |
-| POST   | `/employees/1` | Get paginated employees |
-| POST   | `/employees/2` | Get paginated employees |
+| Method | Path         | Description               |
+| ------ | ------------ | ------------------------- |
+| GET    | `/employees` | Get employees (paginated) |
+
+**GET `/employees` Query Parameters:**
+
+| Param       | Default       | Description                                                                                       |
+| ----------- | ------------- | ------------------------------------------------------------------------------------------------- |
+| `order`     | `employee_id` | Sort column: `employee_id`, `first_name`, `last_name`, `email`, `phone`, `hire_date`, `job_title` |
+| `sort`      | `ASC`         | Sort direction: `ASC`, `DESC`                                                                     |
+| `limit`     | `10`          | Page size                                                                                         |
+| `offset`    | `0`           | Pagination offset                                                                                 |
+| `firstName` | —             | Filter by first name (partial, case-insensitive)                                                  |
+| `lastName`  | —             | Filter by last name (partial, case-insensitive)                                                   |
+| `email`     | —             | Filter by email (partial, case-insensitive)                                                       |
+
+**Example:**
+
+```shell
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8181/employees?firstName=john&limit=10&offset=0&sort=ASC&order=employee_id"
+```
 
 ### Authentication
 
@@ -330,25 +365,43 @@ src/main/resources/sql/
 ### Usage in Java
 
 ```java
-// Simple named parameter query
-String sql = sqlManager.getSql("FindById", Map.of("id", someId));
-client.preparedQuery(sql).execute(Tuple.of(someId));
+// Load ElSql from resource file
+ElSql elSql = ElSql.parse(ElSqlConfig.POSTGRES, resource);
 
-// Query without parameters
-String sql = sqlManager.getSql("FindAll");
+// Get SQL with parameter map — :var placeholders are resolved from params
+Map<String, Object> params = new HashMap<>();
+params.put("id", someId);
+String sql = elSql.getSql("FindById", params);
+
+// Execute with regular client.query (params are inlined into SQL)
 client.query(sql).execute();
 ```
 
 ### Dynamic SQL
 
-For queries requiring dynamic structure (ORDER BY columns, LIMIT/OFFSET), SQL templates use `%s`/`%d` placeholders filled safely in Java with validated values:
+ELSql `@VALUE(:var)` substitutes identifiers (like sort columns) directly from the params map. For LIMIT/OFFSET and other template values, use `%s`/`%d` placeholders filled in Java with validated values:
 
 ```java
-String sql = sqlManager.getSql("FindAllPaged")
-    .formatted(safeColumn, safeDirection, limit, offset);
+params.put("orderColumn", safeColumn);
+params.put("sortDirection", safeDirection);
+
+String sql = elSql.getSql("FindAllPaged", params).formatted(limit, offset);
 ```
 
 Only whitelisted column names and sort directions are allowed to prevent SQL injection.
+
+### Conditional Filters
+
+Use `@AND(:var)` for optional WHERE clauses that are only included when the variable is present:
+
+```text
+@NAME(FindAllPaged)
+  SELECT id, name FROM fruits
+  @WHERE
+    @AND(:name)
+      name ILIKE :name
+  ORDER BY @VALUE(:orderColumn) @VALUE(:sortDirection) LIMIT %d OFFSET %d
+```
 
 ## Project Structure
 

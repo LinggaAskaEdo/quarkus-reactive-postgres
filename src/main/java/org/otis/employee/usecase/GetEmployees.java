@@ -20,7 +20,7 @@ public class GetEmployees {
 	public Uni<DtoPagingResponse> execute(DtoPagingRequest pagingRequest) {
 		return employeeRepository.getEmployees(pagingRequest).onItem().ifNotNull()
 				.transform(resp -> DtoHelper.constructPagingResponse(StatusMsgEnum.SUCCESS,
-						"Data found !!!", resp, resp.size(), resp.size()))
+						"Data found !!!", resp.getEmployees(), resp.getEmployees().size(), resp.getCount()))
 				.onItem().ifNull()
 				.continueWith(() -> DtoHelper.constructPagingResponse(StatusMsgEnum.FAILED,
 						"Data not found !!!", null, 0, 0))

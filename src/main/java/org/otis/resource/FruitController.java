@@ -4,9 +4,10 @@ import java.util.UUID;
 
 import org.otis.fruit.usecase.CreateFruit;
 import org.otis.fruit.usecase.DeleteFruit;
-import org.otis.fruit.usecase.FindAllFruits;
-import org.otis.fruit.usecase.FindFruitById;
+import org.otis.fruit.usecase.GetFruits;
 import org.otis.fruit.usecase.UpdateFruit;
+import org.otis.shared.dto.DtoPagingRequest;
+import org.otis.shared.dto.DtoPagingResponse;
 import org.otis.shared.dto.DtoRequest;
 import org.otis.shared.dto.DtoResponse;
 import org.otis.shared.dto.FruitCreate;
@@ -18,26 +19,26 @@ import jakarta.validation.Valid;
 import jakarta.validation.groups.ConvertGroup;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 @Path("fruits")
 @Authenticated
 public class FruitController {
-	private final FindAllFruits findAllFruits;
-	private final FindFruitById findFruitById;
+	private final GetFruits getFruits;
 	private final CreateFruit createFruit;
 	private final UpdateFruit updateFruit;
 	private final DeleteFruit deleteFruit;
 
-	public FruitController(FindAllFruits findAllFruits, FindFruitById findFruitById, CreateFruit createFruit,
+	public FruitController(GetFruits getFruits, CreateFruit createFruit,
 			UpdateFruit updateFruit, DeleteFruit deleteFruit) {
-		this.findAllFruits = findAllFruits;
-		this.findFruitById = findFruitById;
+		this.getFruits = getFruits;
 		this.createFruit = createFruit;
 		this.updateFruit = updateFruit;
 		this.deleteFruit = deleteFruit;
@@ -45,15 +46,21 @@ public class FruitController {
 
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
-	public Uni<DtoResponse> getAll() {
-		return findAllFruits.execute();
-	}
+	public Uni<DtoPagingResponse> getFruits(
+			@QueryParam("order") @DefaultValue("name") String order,
+			@QueryParam("sort") @DefaultValue("ASC") String sort,
+			@QueryParam("limit") @DefaultValue("10") int limit,
+			@QueryParam("offset") @DefaultValue("0") int offset,
+			@QueryParam("id") UUID id,
+			@QueryParam("name") String name) {
+		DtoPagingRequest pagingRequest = new DtoPagingRequest();
+		pagingRequest.setOrder(order);
+		pagingRequest.setSort(sort);
+		pagingRequest.setLimit(limit);
+		pagingRequest.setOffset(offset);
+		pagingRequest.setName(name);
 
-	@GET
-	@Produces(MediaType.APPLICATION_JSON)
-	@Path("{id}")
-	public Uni<DtoResponse> getSingle(UUID id) {
-		return findFruitById.execute(id);
+		return getFruits.execute(pagingRequest, id);
 	}
 
 	@POST

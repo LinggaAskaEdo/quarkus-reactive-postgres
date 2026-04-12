@@ -14,4 +14,12 @@ public class DtoPagingRequest {
     private DtoRequest search;
     private String order;
     private String sort;
+
+    // Employee filters
+    private String firstName;
+    private String lastName;
+    private String email;
+
+    // Fruit filters
+    private String name;
 }

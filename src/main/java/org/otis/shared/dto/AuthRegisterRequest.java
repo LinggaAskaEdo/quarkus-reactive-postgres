@@ -19,6 +19,11 @@ public class AuthRegisterRequest {
 	@Size(min = 8)
 	private String password;
 
+	@NotBlank
+	@Size(min = 3, max = 100)
 	private String firstName;
+
+	@NotBlank
+	@Size(min = 3, max = 100)
 	private String lastName;
 }

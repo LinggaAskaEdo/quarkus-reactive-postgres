@@ -1,11 +1,26 @@
 @NAME(FindAllPaged)
   SELECT employee_id, first_name, last_name, email, phone, job_title
   FROM employees
-  ORDER BY %s %s LIMIT %d OFFSET %d
+  @WHERE
+    @AND(:firstName)
+      first_name LIKE @VALUE(:firstName)
+    @AND(:lastName)
+      last_name LIKE @VALUE(:lastName)
+    @AND(:email)
+      email LIKE @VALUE(:email)
+  ORDER BY @VALUE(:orderColumn) @VALUE(:sortDirection) 
+  LIMIT @VALUE(:limit) OFFSET @VALUE(:offset)
 
 @NAME(CountAll)
   SELECT count(*) FROM employees
+  @WHERE
+    @AND(:firstName)
+      first_name LIKE @VALUE(:firstName)
+    @AND(:lastName)
+      last_name LIKE @VALUE(:lastName)
+    @AND(:email)
+      email LIKE @VALUE(:email)
 
 @NAME(CreateBulkBase)
   INSERT INTO employees (employee_id, first_name, last_name, email, phone, job_title)
-  VALUES %s ON CONFLICT (employee_id) DO NOTHING
+  VALUES @VALUE(:values) ON CONFLICT (employee_id) DO NOTHING

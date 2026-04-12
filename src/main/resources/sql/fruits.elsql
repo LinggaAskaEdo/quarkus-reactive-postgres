@@ -1,17 +1,35 @@
-@NAME(FindAll)
-  SELECT id, name FROM fruits ORDER BY name ASC
+@NAME(FindAllPaged)
+  SELECT id, name FROM fruits
+  @WHERE
+    @AND(:id)
+      id = @VALUE(:id)
+    @AND(:name)
+      name LIKE @VALUE(:name)
+  ORDER BY @VALUE(:orderColumn) @VALUE(:sortDirection) 
+  LIMIT @VALUE(:limit) OFFSET @VALUE(:offset)
 
-@NAME(FindById)
-  SELECT id, name FROM fruits WHERE id = :id
+@NAME(CountAll)
+  SELECT COUNT(*) FROM fruits
+  @WHERE
+    @AND(:id)
+      id = @VALUE(:id)
+    @AND(:name)
+      name LIKE @VALUE(:name)
 
 @NAME(Create)
-  INSERT INTO fruits (id, name) VALUES (:id, :name) RETURNING id
+  INSERT INTO fruits (id, name) 
+  VALUES (@VALUE(:id), @VALUE(:name)) 
+  RETURNING id
 
 @NAME(CreateBulkBase)
-  INSERT INTO fruits (id, name) VALUES %s ON CONFLICT (name) DO NOTHING
+  INSERT INTO fruits (id, name) 
+  VALUES @VALUE(:values) ON CONFLICT (name) DO NOTHING
 
 @NAME(Update)
-  UPDATE fruits SET name = :name WHERE id = :id
+  UPDATE fruits 
+  SET name = @VALUE(:name) 
+  WHERE id = @VALUE(:id)
 
 @NAME(DeleteById)
-  DELETE FROM fruits WHERE id = :id
+  DELETE FROM fruits 
+  WHERE id = @VALUE(:id)
