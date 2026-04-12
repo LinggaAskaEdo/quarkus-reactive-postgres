@@ -5,12 +5,14 @@ import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.otis.shared.constant.CommonConstant;
 
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.ext.web.client.WebClient;
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 
 @ApplicationScoped
 public class KeycloakGroupInitializer {
@@ -35,14 +37,20 @@ public class KeycloakGroupInitializer {
 	}
 
 	@SuppressWarnings("unused")
-	@PostConstruct
-	void init() {
-		initializeGroups().await().indefinitely();
+	void onStart(@Observes StartupEvent event) {
+		Log.info("Initializing Keycloak groups and group membership mapper...");
+		try {
+			initialize().await().indefinitely();
+			Log.info("Keycloak groups and mapper initialized successfully");
+		} catch (Exception e) {
+			Log.errorf(e, "Failed to initialize Keycloak groups/mapper: %s", e.getMessage());
+		}
 	}
 
-	private Uni<Void> initializeGroups() {
+	private Uni<Void> initialize() {
 		return getAdminToken()
-				.chain(this::createGroupsIfNotExist)
+				.chain(token -> createGroupsIfNotExist(token)
+						.chain(() -> configureGroupMapper(token)))
 				.replaceWithVoid();
 	}
 
@@ -132,6 +140,93 @@ public class KeycloakGroupInitializer {
 	private String extractRealm(String authServerUrl) {
 		String[] parts = authServerUrl.split("/");
 		return parts[parts.length - 1];
+	}
+
+	private Uni<Void> configureGroupMapper(String adminToken) {
+		String baseUrl = authServerUrl.replace("/realms/" + realm, "")
+				+ "/admin/realms/" + realm;
+
+		return getClientId(adminToken, baseUrl)
+				.chain(clientId -> getExistingMapper(clientId, adminToken, baseUrl)
+						.flatMap(mapperExists -> {
+							if (Boolean.TRUE.equals(mapperExists)) {
+								return Uni.createFrom().voidItem();
+							}
+							return createGroupMapper(clientId, adminToken, baseUrl);
+						}));
+	}
+
+	private Uni<String> getClientId(String adminToken, String baseUrl) {
+		String url = baseUrl + "/clients?clientId=quarkus-app";
+
+		return webClient.getAbs(url)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.send()
+				.chain(response -> {
+					if (response.statusCode() != 200) {
+						return Uni.createFrom().failure(new RuntimeException(
+								"Failed to find client: " + response.bodyAsString()));
+					}
+
+					List<JsonObject> clients = response.bodyAsJsonArray().stream()
+							.map(obj -> new JsonObject(obj.toString()))
+							.toList();
+
+					if (clients.isEmpty()) {
+						return Uni.createFrom().failure(new RuntimeException(
+								"Client 'quarkus-app' not found"));
+					}
+
+					return Uni.createFrom().item(clients.get(0).getString("id"));
+				});
+	}
+
+	private Uni<Boolean> getExistingMapper(String clientId, String adminToken, String baseUrl) {
+		String url = baseUrl + "/clients/" + clientId + "/protocol-mappers/models";
+
+		return webClient.getAbs(url)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.send()
+				.map(response -> {
+					if (response.statusCode() != 200) {
+						return false;
+					}
+
+					List<JsonObject> mappers = response.bodyAsJsonArray().stream()
+							.map(obj -> new JsonObject(obj.toString()))
+							.toList();
+
+					return mappers.stream()
+							.anyMatch(m -> "groups-mapper".equals(m.getString("name")));
+				});
+	}
+
+	private Uni<Void> createGroupMapper(String clientId, String adminToken, String baseUrl) {
+		String url = baseUrl + "/clients/" + clientId + "/protocol-mappers/models";
+
+		JsonObject mapper = new JsonObject()
+				.put("name", "groups-mapper")
+				.put("protocol", "openid-connect")
+				.put("protocolMapper", "oidc-group-membership-mapper")
+				.put("config", new JsonObject()
+						.put("full.path", "false")
+						.put("id.token.claim", "true")
+						.put("access.token.claim", "true")
+						.put("claim.name", "groups"));
+
+		Log.infof("Creating group mapper on client %s with config: %s", clientId, mapper.encode());
+
+		return webClient.postAbs(url)
+				.putHeader(CommonConstant.CONTENT_TYPE_HEADER, CommonConstant.CONTENT_TYPE_JSON)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.sendBuffer(Buffer.buffer(mapper.encode()))
+				.chain(response -> {
+					if (response.statusCode() != 201) {
+						return Uni.createFrom().failure(new RuntimeException(
+								"Failed to create group mapper (HTTP " + response.statusCode() + "): " + response.bodyAsString()));
+					}
+					return Uni.createFrom().voidItem();
+				});
 	}
 
 	public List<String> getDefaultGroups() {

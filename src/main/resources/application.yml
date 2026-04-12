@@ -41,6 +41,8 @@ quarkus:
       audience: account # Accept tokens with 'account' audience (Keycloak password grant default)
     token-state-manager:
       encryption-required: false # Disable encryption for dev mode
+  redis:
+    hosts: ${REDIS_HOST:redis://localhost:6379} # Redis connection URL (redis://password@host:port)
 
 # Keycloak Admin API configuration (for user registration)
 keycloak:
@@ -70,3 +72,13 @@ employee:
     min-insert: 10 # Minimum number of employees to insert per run (minimum value is 3)
     enabled: false # Enable or disable the scheduler
     api-url: https://randomuser.me/api/ # URL of the RandomUser API endpoint
+
+# Rate limiting configuration (Redis-based, per-user-group)
+ratelimit:
+  enabled: true # Enable or disable rate limiting
+  window-seconds: 60 # Time window in seconds
+  group-limits:
+    admin: 10 # Admin: 10 requests per window
+    user: 5 # User: 5 requests per window
+    guest: 1 # Guest: 1 request per window
+    default: 3 # Default (no group): 3 requests per window

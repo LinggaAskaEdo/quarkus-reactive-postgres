@@ -278,6 +278,72 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8181/fruits
 
 Import the Postman collection from `etc/quarkus-reactive-postgres.postman_collection.json` for ready-made requests.
 
+## Rate Limiting
+
+Redis-based rate limiting per authenticated user, with different limits based on Keycloak group membership.
+
+### Rate Limit Configuration
+
+```yaml
+ratelimit:
+  enabled: true # Enable or disable rate limiting
+  window-seconds: 60 # Time window in seconds
+  group-limits:
+    admin: 10 # Admin: 10 requests per window
+    user: 5 # User: 5 requests per window
+    guest: 1 # Guest: 1 request per window
+    default: 3 # Default (no group): 3 requests per window
+```
+
+### How It Works
+
+1. **Authenticated requests** are checked against a Redis sorted set rate limiter
+2. **Sliding window** algorithm — expired entries are removed on each request
+3. **Group resolution** — the user's Keycloak group is extracted from JWT claims (`groups` claim or roles)
+4. **Exempt paths** — `/auth/register`, `/auth/login`, `/auth/groups` are not rate limited
+5. **Fallback** — if Redis is unavailable, requests are allowed (fail-open)
+
+### Response
+
+When rate limited, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "group": "user",
+  "limit": 5,
+  "window": "1 minute",
+  "message": "Too many requests. Please try again later."
+}
+```
+
+### Keycloak Group Mapper Setup
+
+For group-based rate limiting to work, Keycloak must include groups in the JWT token:
+
+1. Open Keycloak Admin Console → `quarkus` realm → `quarkus-app` client
+2. Go to **Client scopes** → `quarkus-app-dedicated` → **Mappers** tab
+3. Click **Add mapper** → **From predefined mappers** → **Group Membership**
+4. Set **Token Claim Name** to `groups`
+5. Set **Full group path** to `Off`
+6. Save
+
+Now the JWT will contain a `groups` array: `"groups": ["admin", "user"]`
+
+### Redis Setup
+
+Start a Redis container:
+
+```shell
+docker run -d --name redis-docker -p 6379:6379 redis:7-alpine
+```
+
+Configure Redis connection in `application.yml` or via environment variables:
+
+| Env Variable | Default                  | Description                                                               |
+| ------------ | ------------------------ | ------------------------------------------------------------------------- |
+| `REDIS_HOST` | `redis://localhost:6379` | Redis connection URL (with optional password: `redis://secret@host:port`) |
+
 ## Stress Testing
 
 Run load tests against the API using Apache Benchmark (`ab`). Results are saved to `etc/stress-test/apache-benchmark/results/`.
@@ -492,10 +558,16 @@ src/main/java/org/otis/
 ├── shared/                      # Cross-cutting concerns
 │   ├── constant/                # Constants and enums
 │   ├── dto/                     # Shared DTOs (requests, responses, paging)
+│   ├── exception/               # Custom exceptions
 │   └── util/                    # Helper utilities (LoggingFilter, RequestContext, SqlManager, WebClients)
 │
 ├── auth/                        # Auth bounded context
 │   └── usecase/                 # RegisterUser, LoginUser, KeycloakGroupInitializer
+│
+├── ratelimit/                   # Rate limiting (cross-cutting)
+│   ├── RateLimitConfig.java     # Configuration mapping
+│   ├── RateLimitService.java    # Redis sliding window rate limiter
+│   └── RateLimiterFilter.java   # RESTEasy Reactive @ServerRequestFilter
 │
 ├── fruit/                       # Fruit bounded context
 │   ├── domain/                  # Entity and repository interface
@@ -536,6 +608,7 @@ etc/
 - **JSON logging** — structured logs with `req_id` (UUID v7) for request correlation
 - **Context propagation** — `req_id` propagated across async thread boundaries
 - **Keycloak groups** — default groups (`admin`, `user`, `guest`) created at startup; users can be assigned to groups during registration
+- **Rate limiting** — Redis-based sliding window rate limiter with per-group limits (admin: 10/min, user: 5/min, guest: 1/min)
 - **Stress testing** — Apache Benchmark scripts for login/register endpoints with P90/P95/P99 reporting
 
 ## Related Guides

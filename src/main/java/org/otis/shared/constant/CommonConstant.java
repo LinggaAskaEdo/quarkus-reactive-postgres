@@ -21,4 +21,9 @@ public class CommonConstant {
 	public static final String DETAIL_KEY = "detail";
 	public static final String MESSAGE_KEY = "message";
 	public static final String REQ_ID_KEY = "req_id";
+
+	// User groups
+	public static final String GROUP_ADMIN = "admin";
+	public static final String GROUP_USER = "user";
+	public static final String GROUP_GUEST = "guest";
 }
