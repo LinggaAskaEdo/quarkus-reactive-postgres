@@ -55,8 +55,8 @@ public class KeycloakGroupInitializer {
 	}
 
 	private Uni<String> getAdminToken() {
-		String tokenUrl = authServerUrl.replace("/realms/" + realm, "")
-				+ "/realms/master/protocol/openid-connect/token";
+		String tokenUrl = authServerUrl.replace(CommonConstant.REALMS_PREFIX + realm, "")
+				+ CommonConstant.REALMS_PREFIX + "master/protocol/openid-connect/token";
 		String body = "grant_type=password"
 				+ "&client_id=admin-cli"
 				+ "&username=" + adminUsername
@@ -90,13 +90,13 @@ public class KeycloakGroupInitializer {
 	}
 
 	private Uni<String> getOrCreateGroup(String groupName, String adminToken) {
-		String baseUrl = authServerUrl.replace("/realms/" + realm, "")
-				+ "/admin/realms/" + realm;
+		String baseUrl = authServerUrl.replace(CommonConstant.REALMS_PREFIX + realm, "")
+				+ CommonConstant.REALMS_PREFIX + realm;
 
 		String getGroupsUrl = baseUrl + "/groups";
 
 		return webClient.getAbs(getGroupsUrl)
-				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, CommonConstant.BEARER_PREFIX + adminToken)
 				.send()
 				.chain(response -> {
 					if (response.statusCode() != 200) {
@@ -126,7 +126,7 @@ public class KeycloakGroupInitializer {
 
 		return webClient.postAbs(createGroupUrl)
 				.putHeader(CommonConstant.CONTENT_TYPE_HEADER, CommonConstant.CONTENT_TYPE_JSON)
-				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, CommonConstant.BEARER_PREFIX + adminToken)
 				.sendBuffer(Buffer.buffer(groupJson.encode()))
 				.chain(response -> {
 					if (response.statusCode() != 201) {
@@ -143,8 +143,8 @@ public class KeycloakGroupInitializer {
 	}
 
 	private Uni<Void> configureGroupMapper(String adminToken) {
-		String baseUrl = authServerUrl.replace("/realms/" + realm, "")
-				+ "/admin/realms/" + realm;
+		String baseUrl = authServerUrl.replace(CommonConstant.REALMS_PREFIX + realm, "")
+				+ CommonConstant.REALMS_PREFIX + realm;
 
 		return getClientId(adminToken, baseUrl)
 				.chain(clientId -> getExistingMapper(clientId, adminToken, baseUrl)
@@ -160,7 +160,7 @@ public class KeycloakGroupInitializer {
 		String url = baseUrl + "/clients?clientId=quarkus-app";
 
 		return webClient.getAbs(url)
-				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, CommonConstant.BEARER_PREFIX + adminToken)
 				.send()
 				.chain(response -> {
 					if (response.statusCode() != 200) {
@@ -185,7 +185,7 @@ public class KeycloakGroupInitializer {
 		String url = baseUrl + "/clients/" + clientId + "/protocol-mappers/models";
 
 		return webClient.getAbs(url)
-				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, CommonConstant.BEARER_PREFIX + adminToken)
 				.send()
 				.map(response -> {
 					if (response.statusCode() != 200) {
@@ -218,12 +218,13 @@ public class KeycloakGroupInitializer {
 
 		return webClient.postAbs(url)
 				.putHeader(CommonConstant.CONTENT_TYPE_HEADER, CommonConstant.CONTENT_TYPE_JSON)
-				.putHeader(CommonConstant.AUTHORIZATION_HEADER, "Bearer " + adminToken)
+				.putHeader(CommonConstant.AUTHORIZATION_HEADER, CommonConstant.BEARER_PREFIX + adminToken)
 				.sendBuffer(Buffer.buffer(mapper.encode()))
 				.chain(response -> {
 					if (response.statusCode() != 201) {
 						return Uni.createFrom().failure(new RuntimeException(
-								"Failed to create group mapper (HTTP " + response.statusCode() + "): " + response.bodyAsString()));
+								"Failed to create group mapper (HTTP " + response.statusCode() + "): "
+										+ response.bodyAsString()));
 					}
 					return Uni.createFrom().voidItem();
 				});

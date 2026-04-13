@@ -13,8 +13,12 @@ public class CommonConstant {
 	// HTTP headers
 	public static final String CONTENT_TYPE_HEADER = "Content-Type";
 	public static final String AUTHORIZATION_HEADER = "Authorization";
+	public static final String BEARER_PREFIX = "Bearer ";
 	public static final String CONTENT_TYPE_JSON = "application/json";
 	public static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
+
+	// Keycloak
+	public static final String REALMS_PREFIX = "/realms/";
 
 	// JSON keys
 	public static final String ERROR_KEY = "error";
