@@ -1,4 +1,4 @@
-.PHONY: help build clean run test test-integration package package-native docker docker-jvm docker-legacy-jar docker-native docker-native-micro lint format flyway-up flyway-repair flyway-clean flyway-status stress-test-login stress-test-register
+.PHONY: help build clean run test test-integration package package-native docker docker-jvm docker-legacy-jar docker-native docker-native-micro upgrade lint format flyway-up flyway-repair flyway-clean flyway-status stress-test-login stress-test-register
 
 # Default target
 .DEFAULT_GOAL := help
@@ -74,6 +74,11 @@ docker-run-native: ## Run the native Docker container
 clean: ## Clean build artifacts and stress test results
 	./mvnw clean
 	rm -rf etc/stress-test/apache-benchmark/results/*
+
+##@ Update
+
+upgrade: ## Upgrade Quarkus dependencies to latest versions
+	quarkus update -y
 
 ##@ Code Quality
 

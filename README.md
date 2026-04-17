@@ -9,6 +9,14 @@ If you want to learn more about Quarkus, please visit its website: <https://quar
 - Java 21+
 - Docker (for PostgreSQL and Keycloak)
 
+## Updates
+
+Upgrade Quarkus dependencies to the latest versions:
+
+```shell
+make upgrade
+```
+
 ## Database Setup
 
 Start a PostgreSQL container:
